@@ -11,7 +11,7 @@ pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * \
                 chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)
 unpad = lambda s: s[:-ord(s[len(s) - 1:])]
 
-class LocoCrypto:
+class InCrypto:
     def __init__(self, key):
         ba = hashlib.sha256(key.encode('utf-8')).hexdigest();
         self.salt = bytes.fromhex(ba)
@@ -33,7 +33,7 @@ class LocoCrypto:
         return hash
 
 if __name__ == '__main__':
-    crypto = LocoCrypto('supersecret')
+    crypto = InCrypto('supersecret')
     original = 'I am the very model of a modern major general'
     print(original)
     enc = crypto.encrypt(original)

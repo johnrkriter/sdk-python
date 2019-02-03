@@ -1,18 +1,18 @@
-import locodatum
+import incountry
 from Crypto.Cipher import AES
 import hashlib
 from os import urandom
-import locodatum.LocoCrypto
+import incountry.InCrypto
 
-class LocoDatum:
+class InCountry:
     def __init__( self, apikey, seed):
         self.apikey = apikey
-        self.cipher = locodatum.LocoCrypto.LocoCrypto(seed)
+        self.cipher = incountry.InCrypto.InCrypto(seed)
         
-        config = locodatum.Configuration()
+        config = incountry.Configuration()
         config.api_key['x-api-key'] = apikey
-        api_client = locodatum.ApiClient(config)
-        self.api = locodatum.DefaultApi(api_client)
+        api_client = incountry.ApiClient(config)
+        self.api = incountry.DefaultApi(api_client)
         
     def put(self, **kwargs):
         kwargs['rowid'] = self.cipher.encrypt(kwargs['rowid'])
