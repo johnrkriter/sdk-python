@@ -16,7 +16,7 @@
 from __future__ import absolute_import
 
 # import apis into sdk package
-from com.incountry.api.default_api import DefaultApi
+from incountry.api.default_api import DefaultApi
 
 # import ApiClient
 from incountry.api_client import ApiClient
