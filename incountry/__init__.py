@@ -22,4 +22,4 @@ from com.incountry.api.default_api import DefaultApi
 from incountry.api_client import ApiClient
 from incountry.configuration import Configuration
 # import models into sdk package
-from incountry.com.incountry.model.data import Data
+from incountry.models.data import Data
