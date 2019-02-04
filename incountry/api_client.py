@@ -24,7 +24,7 @@ import six
 from six.moves.urllib.parse import quote
 
 from incountry.configuration import Configuration
-import incountry.com.incountry.model
+import incountry.models
 from incountry import rest
 
 
@@ -258,7 +258,7 @@ class ApiClient(object):
             if klass in self.NATIVE_TYPES_MAPPING:
                 klass = self.NATIVE_TYPES_MAPPING[klass]
             else:
-                klass = getattr(incountry.com.incountry.model, klass)
+                klass = getattr(incountry.models.data, klass)
 
         if klass in self.PRIMITIVE_TYPES:
             return self.__deserialize_primitive(data, klass)
@@ -274,7 +274,7 @@ class ApiClient(object):
     def call_api(self, resource_path, method,
                  path_params=None, query_params=None, header_params=None,
                  body=None, post_params=None, files=None,
-                 response_type=None, auth_settings=None, async=None,
+                 response_type=None, auth_settings=None,
                  _return_http_data_only=None, collection_formats=None,
                  _preload_content=True, _request_timeout=None):
         """Makes the HTTP request (synchronous) and returns deserialized data.
@@ -313,7 +313,8 @@ class ApiClient(object):
             If parameter async is False or missing,
             then the method will return the response directly.
         """
-        if not async:
+        xxx = False
+        if not xxx:
             return self.__call_api(resource_path, method,
                                    path_params, query_params, header_params,
                                    body, post_params, files,

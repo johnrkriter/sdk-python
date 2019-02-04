@@ -98,8 +98,8 @@ class Data(object):
         :param custid: The custid of this Data.  # noqa: E501
         :type: str
         """
-        if custid is None:
-            raise ValueError("Invalid value for `custid`, must not be `None`")  # noqa: E501
+#        if custid is None:
+#            raise ValueError("Invalid value for `custid`, must not be `None`")  # noqa: E501
 
         self._custid = custid
 
@@ -142,8 +142,8 @@ class Data(object):
         :param blob: The blob of this Data.  # noqa: E501
         :type: str
         """
-        if blob is None:
-            raise ValueError("Invalid value for `blob`, must not be `None`")  # noqa: E501
+#        if blob is None:
+#            raise ValueError("Invalid value for `blob`, must not be `None`")  # noqa: E501
 
         self._blob = blob
 

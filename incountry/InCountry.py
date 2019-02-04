@@ -3,6 +3,8 @@ from Crypto.Cipher import AES
 import hashlib
 from os import urandom
 import incountry.InCrypto
+import json
+import ast
 
 class InCountry:
     def __init__( self, apikey, seed):
@@ -14,7 +16,7 @@ class InCountry:
         api_client = incountry.ApiClient(config)
         self.api = incountry.DefaultApi(api_client)
         
-    def put(self, **kwargs):
+    def write(self, **kwargs):
         kwargs['rowid'] = self.cipher.encrypt(kwargs['rowid'])
         kwargs['blob'] = self.cipher.encrypt(kwargs['blob'])
         if kwargs.get('key1'): kwargs['key1'] = self.cipher.hash(kwargs.get('key1'))
@@ -22,16 +24,16 @@ class InCountry:
         if kwargs.get('key3'): kwargs['key3'] = self.cipher.hash(kwargs.get('key3'))
         if kwargs.get('key4'): kwargs['key4'] = self.cipher.hash(kwargs.get('key4'))
         if kwargs.get('key5'): kwargs['key5'] = self.cipher.hash(kwargs.get('key5'))
-        self.api.locoput_get(**kwargs)
+        self.api.write_post(**kwargs)
         
-    def get(self, country, rowid):
+    def read(self, country, rowid):
         rowid = self.cipher.encrypt(rowid)
-        data = self.api.locoget_get(country=country, rowid=rowid)
+        data = self.api.read_post(country=country, rowid=rowid)
         return self.cipher.decrypt(data.blob)
         
     def delete(self, country, rowid):
         rowid = self.cipher.encrypt(rowid)
-        self.api.locodelete_get(country=country, rowid=rowid)
+        self.api.delete_post(country=country, rowid=rowid)
         
     def lookup(self, **kwargs):
         key1 = kwargs.get('key1')
@@ -44,7 +46,8 @@ class InCountry:
         if key3: kwargs['key3'] = self.cipher.hash(key3)
         if key4: kwargs['key4'] = self.cipher.hash(key4)
         if key5: kwargs['key5'] = self.cipher.hash(key5)
-        data = self.api.locoscan_get(**kwargs)
+        data = self.api.lookup_post(**kwargs).blob
+        data = ast.literal_eval(data)
         for loco in data:
             loco['key1'] = key1;
             loco['key2'] = key2;
@@ -61,7 +64,8 @@ class InCountry:
         if kwargs.get('key3'): kwargs['key3'] = self.cipher.hash(kwargs.get('key3'))
         if kwargs.get('key4'): kwargs['key4'] = self.cipher.hash(kwargs.get('key4'))
         if kwargs.get('key5'): kwargs['key5'] = self.cipher.hash(kwargs.get('key5'))
-        data = self.api.locokeyscan_get(**kwargs)
+        data = self.api.keylookup_post(**kwargs).blob
+        data = ast.literal_eval(data)
         
         rows = []
         for d in data: rows.append(self.cipher.decrypt(d))
