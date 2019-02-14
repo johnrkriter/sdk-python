@@ -42,7 +42,7 @@ import incountry
 
 ## Getting Started
 
-You will need an InCountry API Key and a unique seed for client-side encryption. Log in to https://portal.incountry.com to look up or reset your API key. The cryptography seed can be any unique value you choose, and will be used to encrypt your data prior to sending it to InCountry for storage. <b>Do not lose the cryptography seed" as InCountry <b>CANNOT</b> decrypt your data. Please follow the [installation procedure](#installation--usage) and then run the following:
+You will need an InCountry API Key and a unique seed for client-side encryption. Log in to https://portal.incountry.com to look up or reset your API key. The cryptography seed can be any unique value you choose, and will be used to encrypt your data prior to sending it to InCountry for storage. <b>Do not lose the cryptography seed</b> as InCountry <b>CANNOT</b> decrypt your data. Please follow the [installation procedure](#installation--usage) and then run the following:
 
 ```python
 from incountry.InCountry import InCountry
