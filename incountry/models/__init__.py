@@ -1,7 +1,6 @@
 # coding: utf-8
 
 # flake8: noqa
-
 """
     InCountry
 
@@ -15,11 +14,5 @@
 
 from __future__ import absolute_import
 
-# import apis into sdk package
-from incountry.api.default_api import DefaultApi
-
-# import ApiClient
-from incountry.api_client import ApiClient
-from incountry.configuration import Configuration
-# import models into sdk package
+# import models into model package
 from incountry.models.data import Data
