@@ -42,33 +42,33 @@ import incountry
 
 ## Getting Started
 
-Please follow the [installation procedure](#installation--usage) and then run the following:
+You will need an InCountry API Key and a unique seed for client-side encryption. Log in to https://portal.incountry.com to look up or reset your API key. The cryptography seed can be any unique value you choose, and will be used to encrypt your data prior to sending it to InCountry for storage. <b>Do not lose the cryptography seed</b> as InCountry <b>CANNOT</b> decrypt your data. Please follow the [installation procedure](#installation--usage) and then run the following:	Please follow the [installation procedure](#installation--usage) and then run the following:
 
-```python
-from __future__ import print_function
+
+ ```python	```python
+from incountry.InCountry import InCountry	from __future__ import print_function
 import time
 import incountry
 from incountry.rest import ApiException
-from pprint import pprint
-
-# Configure API key authorization: api_key
-incountry.configuration.api_key['x-api-key'] = 'YOUR_API_KEY'
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# incountry.configuration.api_key_prefix['x-api-key'] = 'Bearer'
-# create an instance of the API class
-api_instance = incountry.DefaultApi()
-config = 'config_example' # str | 
-country = 'country_example' # str | 
-rowid = 'rowid_example' # str | 
-
-try:
-    api_response = api_instance.delete_post(config, country, rowid)
-    pprint(api_response)
-except ApiException as e:
-    print("Exception when calling DefaultApi->delete_post: %s\n" % e)
-
-```
-
+from pprint import pprint	from pprint import pprint
+ # Log in to https://portal.incountry.com to look up or reset your API key	# Configure API key authorization: api_key
+APIKEY='YOUR_API_KEY'	incountry.configuration.api_key['x-api-key'] = 'YOUR_API_KEY'
+ # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# Choose a unique seed value for client-side encryption 	# incountry.configuration.api_key_prefix['x-api-key'] = 'Bearer'
+CRYPTOSEED = 'supersecret'	# create an instance of the API class
+ api_instance = incountry.DefaultApi()
+db = InCountry(APIKEY, CRYPTOSEED, "**")	config = 'config_example' # str | 
+ country = 'country_example' # str | 
+db.write(country="US", rowid="row0001", blob="blobbymcblobface", key1="foo", key2="bar")	rowid = 'rowid_example' # str | 
+db.write(country="US", rowid="row0002", blob="I am the very model of a modern major general", key2="foo", key3="bar")	
+db.write(country="US", rowid="row0003", blob="We hold these truths to be self-evident", key2="foo", key1="bar")	try:
+pprint(db.read(country="US", rowid="row0001"))	    api_response = api_instance.delete_post(config, country, rowid)
+pprint(db.lookup(country="US", key2="foo"))	    pprint(api_response)
+pprint(db.keylookup(country="US", key1="foo"))	except ApiException as e:
+db.delete(country="US", rowid="row0001")	    print("Exception when calling DefaultApi->delete_post: %s\n" % e)
+db.delete(country="US", rowid="row0002")	
+db.delete(country="US", rowid="row0003")	
+ ```
 ## Documentation for API Endpoints
 
 All URIs are relative to *https://87lh3zngr4.execute-api.us-east-1.amazonaws.com/prod*
