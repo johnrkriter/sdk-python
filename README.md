@@ -31,9 +31,8 @@ import incountry
 Install via [Setuptools](http://pypi.python.org/pypi/setuptools).
 
 ```sh
-python setup.py install --user
+python setup.py install
 ```
-(or `sudo python setup.py install` to install the package for all users)
 
 Then import the package:
 ```python
