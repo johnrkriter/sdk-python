@@ -54,7 +54,10 @@ APIKEY='YOUR_API_KEY'
 # Choose a unique seed value for client-side encryption 
 CRYPTOSEED = 'supersecret'
 
-db = InCountry(APIKEY, CRYPTOSEED, "**")
+# Specify which country your account data is stored in
+COUNTRY = 'DE'
+
+db = InCountry(APIKEY, CRYPTOSEED, COUNTRY)
 
 db.write(country="US", rowid="row0001", blob="blobbymcblobface", key1="foo", key2="bar")
 db.write(country="US", rowid="row0002", blob="I am the very model of a modern major general", key2="foo", key3="bar")
