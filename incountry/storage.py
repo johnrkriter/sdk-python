@@ -3,7 +3,7 @@ import json
 import pdb
 
 PORTALBACKEND_HOST = 'portal-api-staging.incountry.io'
-FALLBACK_HOST = 'localhost:5000'
+FALLBACK_HOST = 'us.staging-api.incountry.io'
 
 class StorageError(Exception):
 	pass
@@ -27,13 +27,12 @@ class Storage(object):
 			@param host: Host name for the storage API endpoint
 		"""
 		self.api_key = api_key
-		print("API key: ", api_key)
 		self.zone_id = zone_id
 		# Map of country code to dict with 'endpoint' and 'name'
 		self.poplist = {} 
 		self.fallback_host = host
 		# Load countries list. FIXME: Cache this data
-		return
+
 		r = requests.get(f'http://{PORTALBACKEND_HOST}/countries')
 		if r.status_code != 200:
 			raise StorageClientError("Failed to retrieve country endpoint list")
@@ -46,6 +45,7 @@ class Storage(object):
 					# FIXME: Have countries API return the full endpoint
 					self.poplist[cc] = \
 						{'host': f"{cc}.api.incountry.io", 'name': country['name']}
+
 
 	def getendpoint(self, country, path):
 		# TODO: Make countries set cover ALL countries, indicating mini or med POP
@@ -64,6 +64,13 @@ class Storage(object):
 				'Content-Type': 'application/json'}
 
 
+	def check_parameters(self, country, key):
+		if country is None:
+			raise StorageClientError("Missing country")
+		if key is None:
+			raise StorageClientError("Missing key")
+
+
 	def raise_if_server_error(self, response):
 		if response.status_code >= 400:
 			raise StorageServerError( \
@@ -80,12 +87,8 @@ class Storage(object):
 		key2=None,
 		key3=None):
 
-		if country is None:
-			raise StorageClientError("Missing country")
+		self.check_parameters(country, key)		
 		country = country.lower()
-		if key is None:
-			raise StorageClientError("Missing key")
-		
 		data = {"country":country, "key":key}
 		if body:
 			data['body'] = body
@@ -106,13 +109,24 @@ class Storage(object):
 		self.raise_if_server_error(r)
 
 	def read(self, country, key):
-		if country is None:
-			raise StorageClientError("Missing country")
+		self.check_parameters(country, key)		
 		country = country.lower()
-		if key is None:
-			raise StorageClientError("Missing key")
 
 		r = requests.get(
+			self.getendpoint(country, f"/v2/storage/records/{key}"),
+			headers=self.headers())
+		if r.status_code == 404:
+			# Not found is ok
+			return None
+
+		self.raise_if_server_error(r)
+		return r.json()
+
+	def delete(self, country, key):
+		self.check_parameters(country, key)		
+		country = country.lower()
+
+		r = requests.delete(
 			self.getendpoint(country, f"/v2/storage/records/{key}"),
 			headers=self.headers())
 		self.raise_if_server_error(r)
