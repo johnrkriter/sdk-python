@@ -12,17 +12,17 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'mypackage'
-DESCRIPTION = 'My short description for my project.'
-URL = 'https://github.com/me/myproject'
-EMAIL = 'me@example.com'
-AUTHOR = 'Awesome Soul'
+NAME = 'incountry'
+DESCRIPTION = 'InCountry Storage SDK'
+URL = 'https://github.com/incountry/incountry-sdks'
+EMAIL = 'developers@incountry.com'
+AUTHOR = 'InCountry'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.1.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    # 'requests', 'maya', 'records',
+    'requests'
 ]
 
 # What packages are optional?

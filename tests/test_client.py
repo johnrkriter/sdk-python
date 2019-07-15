@@ -1,24 +1,21 @@
 import pytest
 import incountry
-
-ZONE_ID = "zone1"
-API_KEY = "TestAPIKey123"
-
-PROD_ZONE_ID = '9daed72c-8d6d-4edc-acc2-0443e6f0dec1'
-PROD_API_KEY = 'e979f6826ded42a388af4806822863df'
+import uuid
 
 @pytest.fixture()
 def client():
-	c = incountry.Storage(zone_id=PROD_ZONE_ID, api_key=PROD_API_KEY)
+	#zone_id=ZONE_ID, api_key=API_KEY, host=HOST)
+	c = incountry.Storage()
 	yield c
 
 def test_write_single_pop(client):
-	client.write(country='foo', key='key1')
-	r = client.read(country='foo', key="key1")
+	key1 = str(uuid.uuid1())
+	client.write(country='foo', key=key1)
+	r = client.read(country='foo', key=key1)
 	print(r)
 	assert r is not None
 	assert 'version' in r
-	assert r['key'] == 'key1'
+	assert r['key'] == key1
 
 
 def test_read_single_pop(client):

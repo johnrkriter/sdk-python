@@ -1,9 +1,10 @@
+import os
+
 import requests
 import json
 import pdb
 
 PORTALBACKEND_HOST = 'portal-api-staging.incountry.io'
-FALLBACK_HOST = 'us.staging-api.incountry.io'
 
 class StorageError(Exception):
 	pass
@@ -16,7 +17,7 @@ class StorageServerError(StorageError):
 
 
 class Storage(object):
-	def __init__(self, zone_id, api_key, host=FALLBACK_HOST):
+	def __init__(self, zone_id=None, api_key=None, endpoint=None):
 		"""
 			Returns a client to talk to the InCountry storage network. On init
 			this class queries the storage network for the per-country API
@@ -26,13 +27,25 @@ class Storage(object):
 			@param api_key: Your API key
 			@param host: Host name for the storage API endpoint
 		"""
-		self.api_key = api_key
-		self.zone_id = zone_id
+		self.zone_id = zone_id or os.environ.get('INC_ZONE_ID')
+		if not self.zone_id:
+			raise ValueError("Please pass zone_id param or set INC_ZONE_ID env var")
+
+		self.api_key = api_key or os.environ.get('INC_API_KEY')
+		if not self.api_key:
+			raise ValueError("Please pass api_key param or set INC_API_KEY env var")
+
+		self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
+		if not self.endpoint:
+			raise ValueError("Please pass endpoint param or set INC_ENDPOINT env var")
+
 		# Map of country code to dict with 'endpoint' and 'name'
 		self.poplist = {} 
-		self.fallback_host = host
 		# Load countries list. FIXME: Cache this data
+		# TODO: Get country enpoint list working
 
+
+	def load_country_endpoints(self):
 		r = requests.get(f'http://{PORTALBACKEND_HOST}/countries')
 		if r.status_code != 200:
 			raise StorageClientError("Failed to retrieve country endpoint list")
@@ -55,7 +68,7 @@ class Storage(object):
 		if country in self.poplist:
 			return f"http://{self.poplist[country].host}{path}"
 		else:
-			return f"http://{self.fallback_host}{path}"
+			return f"http://{self.endpoint}{path}"
 
 
 	def headers(self):
