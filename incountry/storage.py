@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import os
+import socket
 
 import requests
 import json
@@ -6,8 +8,6 @@ import pdb
 
 from .incountry_crypto import InCrypto
 
-
-COUNTRIES_LIST_URL = 'http://portal-api-staging.incountry.io/countries'
 
 class StorageError(Exception):
 	pass
@@ -21,25 +21,32 @@ class StorageServerError(StorageError):
 
 class Storage(object):
 	def __init__(self, zone_id=None, api_key=None, endpoint=None, encrypt=True,
-				secret_key=None, use_ssl=True):
+				secret_key=None, use_ssl=True, debug=False):
 		"""
-			Returns a client to talk to the InCountry storage network. On init
-			this class queries the storage network for the per-country API
-			endpoints.
+			Returns a client to talk to the InCountry storage network.
+
+			To find the storage endpoint, we use this logic:
+
+			- Attempt to connect to <country>.api.incountry.io
+			- If that fails, then fall back to us.api.incountry.io which
+			  will forward data to miniPOPs
 
 			@param zone_id: The id of the zone into which you wll store data
 			@param api_key: Your API key
-			@param endpoint: Host name for the storage API endpoint
+			@param endpoint: Optional. Will use DNS routing by default.
 			@param encrypt: Pass True (default) to encrypt values before storing
 			@param secret_key: pass the encryption key for AES encrypting fields
+			@param pass True to enable some debug logging
 
-			You can see parameters via env vars also:
+			You can set parameters via env vars also:
 
 			INC_ZONE_ID
 			INC_API_KEY
 			INC_ENDPOINT
 			INC_SECRET_KEY
 		"""
+		self.debug = debug
+
 		self.zone_id = zone_id or os.environ.get('INC_ZONE_ID')
 		if not self.zone_id:
 			raise ValueError("Please pass zone_id param or set INC_ZONE_ID env var")
@@ -49,41 +56,24 @@ class Storage(object):
 			raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
 		self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
-		if not self.endpoint:
-			raise ValueError("Please pass endpoint param or set INC_ENDPOINT env var")
+
+		# Defaults to DNS routing if endpoint is None
+		self.endpoint_map = {}
 
 		self.use_ssl = use_ssl
 
-		print("Connecting to storage endpoint: ", self.endpoint)
-		print("Using API key: ", self.api_key)
+		if self.endpoint:
+			self.log("Connecting to storage endpoint: ", self.endpoint)
+		self.log("Using API key: ", self.api_key)
 
 		self.encrypt = encrypt
 		if encrypt:
-			self.secret_key = os.environ.get('INC_SECRET_KEY')
+			self.secret_key = secret_key or os.environ.get('INC_SECRET_KEY')
 			if not self.secret_key:
 				raise ValueError(
-					"Encryption is one. Please pass secret_key param or set INC_SECRET_KEY env var")
+					"Encryption is on. Please pass secret_key param or set INC_SECRET_KEY env var")
 			self.crypto = InCrypto(self.secret_key)
 
-		# Map of country code to dict with 'endpoint' and 'name'
-		self.poplist = {} 
-		# Load countries list. FIXME: Cache this data
-		# TODO: Get country enpoint list working
-
-
-	def load_country_endpoints(self):
-		r = requests.get(COUNTRIES_LIST_URL)
-		if r.status_code != 200:
-			raise StorageClientError("Failed to retrieve country endpoint list")
-
-		clist = r.json()
-		if 'countries' in clist:
-			for country in clist['countries']:
-				if country['direct']:
-					cc = country['id'].lower()
-					# FIXME: Have countries API return the full endpoint
-					self.poplist[cc] = \
-						{'host': f"{cc}.api.incountry.io", 'name': country['name']}
 
 
 	def write(self,
@@ -113,7 +103,7 @@ class Storage(object):
 			self.encrypt_data(data)
 
 		r = requests.post(
-			self.getendpoint(country, f"/v2/storage/records/{country}"),
+			self.getendpoint(country, "/v2/storage/records/" + country),
 			headers=self.headers(),
 			data=json.dumps(data))
 		
@@ -127,7 +117,7 @@ class Storage(object):
 			key = self.crypto.encrypt(key)
 			
 		r = requests.get(
-			self.getendpoint(country, f"/v2/storage/records/{country}/{key}"),
+			self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
 			headers=self.headers())
 		if r.status_code == 404:
 			# Not found is ok
@@ -150,7 +140,7 @@ class Storage(object):
 			key = self.crypto.encrypt(key)
 
 		r = requests.delete(
-			self.getendpoint(country, f"/v2/storage/records/{country}/{key}"),
+			self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
 			headers=self.headers())
 		self.raise_if_server_error(r)
 		return r.json()
@@ -159,6 +149,10 @@ class Storage(object):
 	###########################################
 	########### Common functions
 	###########################################
+	def log(self, *args):
+		if self.debug:
+			print("[incountry] ", args)
+
 	def encrypt_data(self, record):
 		if self.secret_key is None:
 			raise ValueError("Cannot encrypt data because secret_key is None")
@@ -176,21 +170,31 @@ class Storage(object):
 
 	def getendpoint(self, country, path):
 		# TODO: Make countries set cover ALL countries, indicating mini or med POP
-		scheme = "http"
+		protocol = "http"
 		if self.use_ssl:
-			scheme = "https"
+			protocol = "https"
 
 		if not path.startswith("/"):
-			path = f"/{path}"
+			path = "/" + path
 
-		if country in self.poplist:
-			return f"{scheme}://{self.poplist[country].host}{path}"
-		else:
-			return f"{scheme}://{self.endpoint}{path}"
+		host = self.endpoint
+
+		if not host:
+			host = country + ".api.incountry.io"
+			try:
+				socket.gethostbyname(host)
+			except socket.gaierror:
+				# POP not registered yet, so fall back to US
+				host = "us.api.incountry.io"
+
+		res = "{}://{}{}".format(protocol, host, path)
+		self.log("Endpoint: ", res)
+		return res
+
 
 
 	def headers(self):
-		return {'Authorization': f'Bearer {self.api_key}',
+		return {'Authorization': "Bearer " + self.api_key,
 				'x-zone-id': self.zone_id,
 				'Content-Type': 'application/json'}
 

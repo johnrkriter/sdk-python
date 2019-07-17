@@ -1,10 +1,10 @@
-from Crypto.Cipher import AES
 import hmac
 import hashlib
 import os
 import struct
 from os import urandom
 
+from Crypto.Cipher import AES
 
 BLOCK_SIZE = 16  # Bytes
 pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * \
@@ -31,12 +31,3 @@ class InCrypto:
     def hash(self, data):
         hash = hmac.new(self.salt, data.encode('utf-8'), digestmod=hashlib.sha256).digest().hex()
         return hash
-
-if __name__ == '__main__':
-    crypto = InCrypto('supersecret')
-    original = 'I am the very model of a modern major general'
-    print(original)
-    enc = crypto.encrypt(original)
-    print(enc)
-    data = crypto.hash(original)
-    print(data)

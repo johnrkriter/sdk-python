@@ -2,3 +2,4 @@ build/
 dist/
 incountry.egg-info
 .env
+*.pyc

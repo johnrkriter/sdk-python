@@ -5,7 +5,7 @@ import uuid
 @pytest.fixture()
 def client():
 	#zone_id=ZONE_ID, api_key=API_KEY, host=HOST)
-	c = incountry.Storage(encrypt=False, use_ssl=False)
+	c = incountry.Storage(encrypt=False)
 	yield c
 
 def test_write_single_pop(client):
@@ -29,14 +29,27 @@ def test_read_single_pop(client):
 	assert r['body'] == "Welcome to Rome"
 
 def test_delete_single_pop(client):
-	client.write(country='JP', key='record1', body='Konichiwa')
-	r = client.read(country='JP', key='record1')
+	client.write(country='ruc1', key='record1', body='Konichiwa')
+	r = client.read(country='ruc1', key='record1')
 	assert r is not None
 
-	client.delete(country='JP', key='record1')
+	client.delete(country='ruc1', key='record1')
 
-	r = client.read(country='JP', key='record1')
+	r = client.read(country='ruc1', key='record1')
 	assert r is None
 
+def test_using_encryption():
+	eclient = incountry.Storage(encrypt=True, use_ssl=True)
+	eclient.write(country="ru", key="key1", body="You cant read this text")
+
+	client = incountry.Storage(encrypt=False, use_ssl=True)
+	# Keys won't clash because of encryption
+	client.write(country="ru", key="key1", body="You CAN read this text")
+
+	r = eclient.read(country="ru", key="key1")
+	assert r['body'] == "You cant read this text"
+
+	r = client.read(country="ru", key="key1")
+	assert r['body'] == "You CAN read this text"
 
 
