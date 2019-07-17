@@ -5,7 +5,7 @@ import uuid
 @pytest.fixture()
 def client():
 	#zone_id=ZONE_ID, api_key=API_KEY, host=HOST)
-	c = incountry.Storage()
+	c = incountry.Storage(encrypt=False)
 	yield c
 
 def test_write_single_pop(client):
