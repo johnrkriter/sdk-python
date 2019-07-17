@@ -21,7 +21,7 @@ class StorageServerError(StorageError):
 
 class Storage(object):
 	def __init__(self, zone_id=None, api_key=None, endpoint=None, encrypt=True,
-				secret_key=None):
+				secret_key=None, use_ssl=True):
 		"""
 			Returns a client to talk to the InCountry storage network. On init
 			this class queries the storage network for the per-country API
@@ -51,6 +51,11 @@ class Storage(object):
 		self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
 		if not self.endpoint:
 			raise ValueError("Please pass endpoint param or set INC_ENDPOINT env var")
+
+		self.use_ssl = use_ssl
+
+		print("Connecting to storage endpoint: ", self.endpoint)
+		print("Using API key: ", self.api_key)
 
 		self.encrypt = encrypt
 		if encrypt:
@@ -108,7 +113,7 @@ class Storage(object):
 			self.encrypt_data(data)
 
 		r = requests.post(
-			self.getendpoint(country, "/v2/storage/records"),
+			self.getendpoint(country, f"/v2/storage/records/{country}"),
 			headers=self.headers(),
 			data=json.dumps(data))
 		
@@ -122,7 +127,7 @@ class Storage(object):
 			key = self.crypto.encrypt(key)
 			
 		r = requests.get(
-			self.getendpoint(country, f"/v2/storage/records/{key}"),
+			self.getendpoint(country, f"/v2/storage/records/{country}/{key}"),
 			headers=self.headers())
 		if r.status_code == 404:
 			# Not found is ok
@@ -145,7 +150,7 @@ class Storage(object):
 			key = self.crypto.encrypt(key)
 
 		r = requests.delete(
-			self.getendpoint(country, f"/v2/storage/records/{key}"),
+			self.getendpoint(country, f"/v2/storage/records/{country}/{key}"),
 			headers=self.headers())
 		self.raise_if_server_error(r)
 		return r.json()
@@ -171,13 +176,17 @@ class Storage(object):
 
 	def getendpoint(self, country, path):
 		# TODO: Make countries set cover ALL countries, indicating mini or med POP
+		scheme = "http"
+		if self.use_ssl:
+			scheme = "https"
+
 		if not path.startswith("/"):
 			path = f"/{path}"
 
 		if country in self.poplist:
-			return f"http://{self.poplist[country].host}{path}"
+			return f"{scheme}://{self.poplist[country].host}{path}"
 		else:
-			return f"http://{self.endpoint}{path}"
+			return f"{scheme}://{self.endpoint}{path}"
 
 
 	def headers(self):
