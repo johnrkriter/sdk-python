@@ -36,7 +36,8 @@ class Storage(object):
 			@param endpoint: Optional. Will use DNS routing by default.
 			@param encrypt: Pass True (default) to encrypt values before storing
 			@param secret_key: pass the encryption key for AES encrypting fields
-			@param pass True to enable some debug logging
+			@param debug: pass True to enable some debug logging
+			@param use_ssl: Pass False to talk to an unencrypted endpoint
 
 			You can set parameters via env vars also:
 
@@ -160,7 +161,6 @@ class Storage(object):
 			if record.get(k, None):
 				oldval = record[k]
 				record[k] = self.crypto.encrypt(record[k])
-				print("Encrypted len of {} is {}".format(oldval, len(record[k])))
 
 	def decrypt_data(self, record):
 		for k in ['key','body','profile_key','key2','key3']:
