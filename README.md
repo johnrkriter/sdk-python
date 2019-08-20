@@ -1,7 +1,7 @@
 # Introduction
 
 This is the python SDK for the InCountry storage network. Sign up for a free account at
-https://incountry.com, then take note of your Zone ID and API key.
+https://incountry.com, then copy your Environment ID (the UUID) and the API key.
 
 # Installation
 
@@ -15,7 +15,8 @@ and now use the SDK:
 
     > import incountry
 
-    > incdb = incountry.Storage(zone_id=..., api_key=..., secret_key=...)
+    > incdb = incountry.Storage(env_id="4e00667a-58a4-420b-97b7-243073124b89", \
+                  api_key="key.yowivz.8ec54a9e647d43cbbc66-8b3096e7a70f", secret_key="any secret value")
 
     > incdb.write(country='jp', key='key1', body="Store this data in Japan")
 
