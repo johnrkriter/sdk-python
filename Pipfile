@@ -11,7 +11,7 @@ requests = "*"
 setuptools = "*"
 wheel = "*"
 twine = "*"
-pycrypto = "*"
+pycryptodome = "*"
 
 [requires]
 python_version = "3.7"
