@@ -20,7 +20,7 @@ class StorageServerError(StorageError):
 
 
 class Storage(object):
-	def __init__(self, zone_id=None, api_key=None, endpoint=None, encrypt=True,
+	def __init__(self, env_id=None, api_key=None, endpoint=None, encrypt=True,
 				secret_key=None, use_ssl=True, debug=False):
 		"""
 			Returns a client to talk to the InCountry storage network.
@@ -31,7 +31,7 @@ class Storage(object):
 			- If that fails, then fall back to us.api.incountry.io which
 			  will forward data to miniPOPs
 
-			@param zone_id: The id of the zone into which you wll store data
+			@param env_id: The id of the environment into which you wll store data
 			@param api_key: Your API key
 			@param endpoint: Optional. Will use DNS routing by default.
 			@param encrypt: Pass True (default) to encrypt values before storing
@@ -41,16 +41,16 @@ class Storage(object):
 
 			You can set parameters via env vars also:
 
-			INC_ZONE_ID
+			INC_ENV_ID
 			INC_API_KEY
 			INC_ENDPOINT
 			INC_SECRET_KEY
 		"""
 		self.debug = debug
 
-		self.zone_id = zone_id or os.environ.get('INC_ZONE_ID')
+		self.zone_id = env_id or os.environ.get('INC_ENV_ID') or os.environ.get('INC_ZONE_ID')
 		if not self.zone_id:
-			raise ValueError("Please pass zone_id param or set INC_ZONE_ID env var")
+			raise ValueError("Please pass env_id param or set INC_ENV_ID env var")
 
 		self.api_key = api_key or os.environ.get('INC_API_KEY')
 		if not self.api_key:
@@ -184,6 +184,7 @@ class Storage(object):
 			try:
 				socket.gethostbyname(host)
 			except socket.gaierror:
+				print("Failed to lookup host for {}".format(host))
 				# POP not registered yet, so fall back to US
 				host = "us.api.incountry.io"
 
