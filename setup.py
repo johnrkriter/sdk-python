@@ -21,7 +21,7 @@ REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.3.0'
 
 # What packages are required for this module to be executed?
-REQUIRED = ['requests', 'pycrypto']
+REQUIRED = ['requests', 'pycryptodome']
 
 # What packages are optional?
 EXTRAS = {
