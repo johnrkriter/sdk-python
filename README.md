@@ -3,6 +3,11 @@
 This is the python SDK for the InCountry storage network. Sign up for a free account at
 https://incountry.com, then copy your Environment ID (the UUID) and the API key.
 
+Important notes
+---------------
+We've changed the encryption algorithm since version `0.2.0` so it is not compatible with earlier versions.
+
+
 # Installation
 
 Use `pip` or `pipenv` to install the package:
@@ -67,12 +72,12 @@ Writes a single record to the storage network.
 Reads a single record from the storage network.
 
     @param country: required - 2 letter country code indicating location where the data is stored
-    @param key: required - primary key for this record 
+    @param key: required - primary key for this record
 
 ### Storage.delete(params)
 
 Delete a single record from the storage network.
 
     @param country: required - 2 letter country code indicating location where the data is stored
-    @param key: required - primary key for this record 
+    @param key: required - primary key for this record
 
