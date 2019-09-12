@@ -9,5 +9,5 @@ install:
   - pip3 install bandit
 
 script:
-  - bandit --ini bandit.ini -r -o bandit.json -f json
+  - bandit --ini bandit.ini -r -o bandit.json -f json || true
   - sonar-scanner
