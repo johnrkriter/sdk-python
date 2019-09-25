@@ -22,7 +22,7 @@ and now use the SDK:
 
 	> r = incdb.read(country='jp', key='key1')
 	> print(r)
-	{'body': 'Store this data in Japan', 'key': 'key1', 'key2': None, 'key3': None, 'profile_key': None, 'range_key': None, 'version': 1, 'zone_id': 645}
+	{'body': 'Store this data in Japan', 'key': 'key1', 'key2': None, 'key3': None, 'profile_key': None, 'range_key': None, 'version': 1, 'env_id': 645}
 
     > incdb.delete(country='jp', key='key1')
     > r = incdb.read(country='jp', key='key1')
@@ -31,7 +31,7 @@ and now use the SDK:
 
 Instead of passing parameters, you can configure the client in your environment:
 
-    export INC_ENV_ID=<env id>
+    export INC_ENVIRONMENT_ID=<environment id>
     export INC_API_KEY=<api key>
     export INC_SECRET_KEY=`uuidgen`
 
@@ -42,7 +42,7 @@ Instead of passing parameters, you can configure the client in your environment:
 
 Returns a storage API client.
 
-    @param env_id: The id of the environment into which you wll store data
+    @param environment_id: The id of the environment into which you wll store data
     @param api_key: Your API key
     @param endpoint: Optional. Will use DNS routing by default.
     @param encrypt: Pass True (default) to encrypt values before storing
