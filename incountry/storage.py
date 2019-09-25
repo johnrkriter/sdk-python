@@ -48,8 +48,8 @@ class Storage(object):
 		"""
 		self.debug = debug
 
-		self.zone_id = env_id or os.environ.get('INC_ENV_ID') or os.environ.get('INC_ZONE_ID')
-		if not self.zone_id:
+		self.env_id = env_id or os.environ.get('INC_ENV_ID')
+		if not self.env_id:
 			raise ValueError("Please pass env_id param or set INC_ENV_ID env var")
 
 		self.api_key = api_key or os.environ.get('INC_API_KEY')
@@ -78,15 +78,15 @@ class Storage(object):
 
 
 	def write(self,
-		country, 
-		key, 
-		body=None, 
-		profile_key=None, 
+		country,
+		key,
+		body=None,
+		profile_key=None,
 		range_key=None,
 		key2=None,
 		key3=None):
 
-		self.check_parameters(country, key)		
+		self.check_parameters(country, key)
 		country = country.lower()
 		data = {"country":country, "key":key}
 		if body:
@@ -107,16 +107,16 @@ class Storage(object):
 			self.getendpoint(country, "/v2/storage/records/" + country),
 			headers=self.headers(),
 			data=json.dumps(data))
-		
+
 		self.raise_if_server_error(r)
 
 	def read(self, country, key):
-		self.check_parameters(country, key)		
+		self.check_parameters(country, key)
 		country = country.lower()
 
 		if self.encrypt:
 			key = self.crypto.encrypt(key)
-			
+
 		r = requests.get(
 			self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
 			headers=self.headers())
@@ -134,7 +134,7 @@ class Storage(object):
 
 
 	def delete(self, country, key):
-		self.check_parameters(country, key)		
+		self.check_parameters(country, key)
 		country = country.lower()
 
 		if self.encrypt:
@@ -196,7 +196,7 @@ class Storage(object):
 
 	def headers(self):
 		return {'Authorization': "Bearer " + self.api_key,
-				'x-zone-id': self.zone_id,
+				'x-env-id': self.env_id,
 				'Content-Type': 'application/json'}
 
 
