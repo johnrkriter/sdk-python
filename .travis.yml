@@ -1,0 +1,13 @@
+addons:
+  sonarcloud:
+    organization: "incountry"
+
+language: python
+python:
+  - "3.7"
+install:
+  - pip3 install bandit
+
+script:
+  - bandit --ini bandit.ini -r -o bandit.json -f json || true
+  - sonar-scanner
