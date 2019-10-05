@@ -22,7 +22,7 @@ and now use the SDK:
 
 	> r = incdb.read(country='jp', key='key1')
 	> print(r)
-	{'body': 'Store this data in Japan', 'key': 'key1', 'key2': None, 'key3': None, 'profile_key': None, 'range_key': None, 'version': 1, 'zone_id': 645}
+	{'body': 'Store this data in Japan', 'key': 'key1', 'key2': None, 'key3': None, 'profile_key': None, 'range_key': None, 'version': 1, 'env_id': 645}
 
     > incdb.delete(country='jp', key='key1')
     > r = incdb.read(country='jp', key='key1')
@@ -31,7 +31,7 @@ and now use the SDK:
 
 Instead of passing parameters, you can configure the client in your environment:
 
-    export INC_ZONE_ID=<zone id>
+    export INC_ENVIRONMENT_ID=<environment id>
     export INC_API_KEY=<api key>
     export INC_SECRET_KEY=`uuidgen`
 
@@ -42,7 +42,7 @@ Instead of passing parameters, you can configure the client in your environment:
 
 Returns a storage API client.
 
-    @param zone_id: The id of the zone into which you wll store data
+    @param environment_id: The id of the environment into which you wll store data
     @param api_key: Your API key
     @param endpoint: Optional. Will use DNS routing by default.
     @param encrypt: Pass True (default) to encrypt values before storing
@@ -55,7 +55,7 @@ Returns a storage API client.
 Writes a single record to the storage network.
 
     @param country: required - 2 letter country code indicating location to store data
-    @param key: required - unique key for this record (unique within the zone and country)
+    @param key: required - unique key for this record (unique within the environment and country)
     @param body: body of the record in any format
     @param profile_key: identifier of the end-customer which owns this data
     @param range_key: sorted key for the record, like a timestamp. BigInt type.
@@ -67,12 +67,12 @@ Writes a single record to the storage network.
 Reads a single record from the storage network.
 
     @param country: required - 2 letter country code indicating location where the data is stored
-    @param key: required - primary key for this record 
+    @param key: required - primary key for this record
 
 ### Storage.delete(params)
 
 Delete a single record from the storage network.
 
     @param country: required - 2 letter country code indicating location where the data is stored
-    @param key: required - primary key for this record 
+    @param key: required - primary key for this record
 
