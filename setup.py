@@ -22,7 +22,7 @@ VERSION = '0.2.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'requests','pycrypto'
+    'requests', 'pycryptodome'
 ]
 
 # What packages are optional?
