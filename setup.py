@@ -21,9 +21,7 @@ REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.2.1'
 
 # What packages are required for this module to be executed?
-REQUIRED = [
-    'requests', 'pycryptodome'
-]
+REQUIRED = ['requests', 'pycryptodome', 'jsonschema']
 
 # What packages are optional?
 EXTRAS = {
@@ -106,7 +104,6 @@ setup(
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
-
     # entry_points={
     #     'console_scripts': ['mycli=mymodule:cli'],
     # },
@@ -122,10 +119,8 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
     # $ setup.py publish support.
-    cmdclass={
-        'upload': UploadCommand,
-    },
+    cmdclass={'upload': UploadCommand},
 )
