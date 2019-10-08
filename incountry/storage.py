@@ -90,7 +90,6 @@ class Storage(object):
     def write(
         self, country, key, body=None, profile_key=None, range_key=None, key2=None, key3=None
     ):
-
         self.check_parameters(country, key)
         country = country.lower()
         data = {"country": country, "key": key}
@@ -120,10 +119,14 @@ class Storage(object):
         self.check_parameters(country, key)
         country = country.lower()
 
+        if self.encrypt:
+            key = self.crypto.encrypt(key)
+
         r = requests.get(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
             headers=self.headers(),
         )
+
         if r.status_code == 404:
             # Not found is ok
             return None
@@ -139,7 +142,7 @@ class Storage(object):
     def find(
         self,
         country,
-        key,
+        key=None,
         profile_key=None,
         range_key=None,
         key2=None,
@@ -150,8 +153,8 @@ class Storage(object):
         if country is None:
             raise StorageClientError("Missing country")
 
-        if not isinstance(limit, int) or limit > 100:
-            raise StorageClientError("limit should be an integer <= 100")
+        if not isinstance(limit, int) or limit < 0:
+            raise StorageClientError("limit should be an integer >= 0")
 
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")
@@ -170,8 +173,11 @@ class Storage(object):
         if key3:
             filter_params['key3'] = key3
 
+        if self.encrypt:
+            self.encrypt_record(filter_params)
+
         r = requests.post(
-            self.getendpoint(country, "/v2/storage/records/" + country),
+            self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
             headers=self.headers(),
             data=json.dumps({"filter": filter_params, "options": options}),
         )
@@ -197,9 +203,6 @@ class Storage(object):
         self.check_parameters(country, key)
         country = country.lower()
 
-        if self.encrypt:
-            key = self.crypto.encrypt(key)
-
         r = requests.delete(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
             headers=self.headers(),
@@ -217,11 +220,18 @@ class Storage(object):
     def encrypt_record(self, record):
         if record.get('body'):
             record['body'] = self.crypto.encrypt(record['body'])
+        if record.get('key'):
+            record['key'] = self.crypto.encrypt(record['key'])
+        for k in ['profile_key', 'key2', 'key3']:
+            if record.get(k, None):
+                record[k] = self.crypto.hash(record[k] + ':' + self.env_id)
         return record
 
     def decrypt_record(self, record):
         if record.get('body'):
             record['body'] = self.crypto.decrypt(record['body'])
+        if record.get('key'):
+            record['key'] = self.crypto.decrypt(record['key'])
         return record
 
     def getendpoint(self, country, path):

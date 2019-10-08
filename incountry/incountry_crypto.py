@@ -20,9 +20,8 @@ class InCrypto:
 
     def encrypt(self, raw):
         raw = pad(raw)
-        bytes_ = raw.encode('utf-8')
         cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
-        return cipher.encrypt(bytes_).hex()
+        return cipher.encrypt(raw.encode('utf-8')).hex()
 
     def decrypt(self, enc):
         enc = bytes.fromhex(enc)
