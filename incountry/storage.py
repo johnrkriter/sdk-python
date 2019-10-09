@@ -4,10 +4,8 @@ import socket
 import json
 
 import requests
-from jsonschema import validate
 
 from .incountry_crypto import InCrypto
-from .validation import find_response_schema
 
 
 class StorageError(Exception):
@@ -23,6 +21,8 @@ class StorageServerError(StorageError):
 
 
 class Storage(object):
+    FIND_LIMIT = 100
+
     def __init__(
         self,
         environment_id=None,
@@ -87,25 +87,16 @@ class Storage(object):
                 )
             self.crypto = InCrypto(self.secret_key)
 
-    def write(
-        self, country, key, body=None, profile_key=None, range_key=None, key2=None, key3=None
-    ):
-        self.check_parameters(country, key)
+    def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()
         data = {"country": country, "key": key}
-        if body:
-            data['body'] = body
-        if profile_key:
-            data['profile_key'] = profile_key
-        if range_key:
-            data['range_key'] = range_key
-        if key2:
-            data['key2'] = key2
-        if key3:
-            data['key3'] = key3
+
+        for k in ['body', 'key2', 'key3', 'profile_key', 'range_key']:
+            if record_kwargs.get(k):
+                data[k] = record_kwargs.get(k)
 
         if self.encrypt:
-            self.encrypt_record(data)
+            self.encrypt_payload(data)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country),
@@ -115,8 +106,7 @@ class Storage(object):
 
         self.raise_if_server_error(r)
 
-    def read(self, country, key):
-        self.check_parameters(country, key)
+    def read(self, country: str, key: str):
         country = country.lower()
 
         if self.encrypt:
@@ -135,26 +125,13 @@ class Storage(object):
         data = r.json()
 
         if self.encrypt:
-            self.decrypt_record(data)
+            self.decrypt_payload(data)
 
         return data
 
-    def find(
-        self,
-        country,
-        key=None,
-        profile_key=None,
-        range_key=None,
-        key2=None,
-        key3=None,
-        limit=0,
-        offset=0,
-    ):
-        if country is None:
-            raise StorageClientError("Missing country")
-
-        if not isinstance(limit, int) or limit < 0:
-            raise StorageClientError("limit should be an integer >= 0")
+    def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
+        if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
+            raise StorageClientError("limit should be an integer >= 0 and <= %s" % self.FIND_LIMIT)
 
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")
@@ -162,19 +139,12 @@ class Storage(object):
         filter_params = {}
         options = {"limit": limit, "offset": offset}
 
-        if key:
-            filter_params['key'] = key
-        if profile_key:
-            filter_params['profile_key'] = profile_key
-        if range_key:
-            filter_params['range_key'] = range_key
-        if key2:
-            filter_params['key2'] = key2
-        if key3:
-            filter_params['key3'] = key3
+        for k in ['key', 'key2', 'key3', 'profile_key', 'range_key']:
+            if filter_kwargs.get(k):
+                filter_params[k] = filter_kwargs.get(k)
 
         if self.encrypt:
-            self.encrypt_record(filter_params)
+            self.encrypt_payload(filter_params)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
@@ -185,23 +155,20 @@ class Storage(object):
         self.raise_if_server_error(r)
         response = r.json()
 
-        try:
-            validate(instance=response, schema=find_response_schema)
-        except Exception as e:
-            raise StorageServerError('Invalid PoPAPI response', e)
-
         return {
             'meta': response['meta'],
-            'data': [self.decrypt_record(record) for record in response['data']],
+            'data': [self.decrypt_payload(record) for record in response['data']],
         }
 
     def find_one(self, offset=0, **kwargs):
-        result = self.find(offset=offset, **kwargs)
+        result = self.find(offset=offset, limit=1, **kwargs)
         return result['data'][0] if len(result['data']) else None
 
-    def delete(self, country, key):
-        self.check_parameters(country, key)
+    def delete(self, country: str, key: str):
         country = country.lower()
+
+        if self.encrypt:
+            key = self.crypto.encrypt(key)
 
         r = requests.delete(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
@@ -217,17 +184,22 @@ class Storage(object):
         if self.debug:
             print("[incountry] ", args)
 
-    def encrypt_record(self, record):
+    def encrypt_payload(self, record):
         if record.get('body'):
             record['body'] = self.crypto.encrypt(record['body'])
         if record.get('key'):
-            record['key'] = self.crypto.encrypt(record['key'])
+            if isinstance(record.get('key'), list):
+                record['key'] = [self.crypto.encrypt(x) for x in record['key']]
+            else:
+                record['key'] = self.crypto.encrypt(record['key'])
         for k in ['profile_key', 'key2', 'key3']:
-            if record.get(k, None):
+            if record.get(k, None) and isinstance(record[k], list):
+                record[k] = [self.crypto.hash(x + ':' + self.env_id) for x in record[k]]
+            elif record.get(k, None):
                 record[k] = self.crypto.hash(record[k] + ':' + self.env_id)
         return record
 
-    def decrypt_record(self, record):
+    def decrypt_payload(self, record):
         if record.get('body'):
             record['body'] = self.crypto.decrypt(record['body'])
         if record.get('key'):
@@ -264,12 +236,6 @@ class Storage(object):
             'x-env-id': self.env_id,
             'Content-Type': 'application/json',
         }
-
-    def check_parameters(self, country, key):
-        if country is None:
-            raise StorageClientError("Missing country")
-        if key is None:
-            raise StorageClientError("Missing key")
 
     def raise_if_server_error(self, response):
         if response.status_code >= 400:

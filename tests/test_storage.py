@@ -48,20 +48,13 @@ def client():
 
 @httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.happy_path
 def test_write(client, record):
     httpretty.register_uri(
         httpretty.POST, 'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY
     )
 
-    client.write(
-        country=record.get('country'),
-        key=record.get('key'),
-        body=record.get('body', None),
-        profile_key=record.get('profile_key', None),
-        range_key=record.get('range_key', None),
-        key2=record.get('key2', None),
-        key3=record.get('key3', None),
-    )
+    client.write(**record)
 
     received_payload = json.loads(httpretty.last_request().body)
 
@@ -77,9 +70,10 @@ def test_write(client, record):
 
 @httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.happy_path
 def test_read(client, record):
     stored_record = dict(record)
-    stored_record = client.encrypt_record(stored_record)
+    stored_record = client.encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.GET,
@@ -93,25 +87,71 @@ def test_read(client, record):
     assert record_response['key'] == record['key']
     if record.get('body'):
         assert record_response['body'] == record['body']
-    httpretty.reset()
+
+
+@httpretty.activate
+@pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.happy_path
+def test_read_404(client, record):
+    stored_record = dict(record)
+    stored_record = client.encrypt_payload(stored_record)
+
+    httpretty.register_uri(
+        httpretty.GET,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record['key'],
+        status=404,
+    )
+
+    record_response = client.read(country=record['country'], key=record['key'])
+
+    assert record_response is None
+
+
+@httpretty.activate
+@pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.happy_path
+def test_delete(client, record):
+    response = {'result': 'OK'}
+
+    stored_record = dict(record)
+    stored_record = client.encrypt_payload(stored_record)
+
+    httpretty.register_uri(
+        httpretty.DELETE,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record['key'],
+        body=json.dumps(response),
+    )
+
+    record_response = client.delete(country=record['country'], key=record['key'])
+
+    record_response.should.be.equal(response)
 
 
 @httpretty.activate
 @pytest.mark.parametrize(
     'query,records',
     [
-        ({"key": "key1", "limit": 1, "offset": 2}, TEST_RECORDS),
+        ({"key": "key1"}, TEST_RECORDS),
         ({"key2": "key2"}, TEST_RECORDS),
         ({"key3": "key3"}, TEST_RECORDS),
         ({"range_key": 1}, TEST_RECORDS),
         ({"profile_key": "profile_key"}, TEST_RECORDS),
-        ({"key": "key2", "limit": 0, "offset": 1}, []),
+        ({"key": ["key1-1", "key1-2"]}, TEST_RECORDS),
+        ({"key2": ["key2-1", "key2-2"]}, TEST_RECORDS),
+        ({"key3": ["key3-1", "key3-2"]}, TEST_RECORDS),
+        ({"range_key": [1, 2]}, TEST_RECORDS),
+        ({"range_key": {'$lte': 1}}, TEST_RECORDS),
+        ({"profile_key": ["profile_key1", "profile_key2"]}, TEST_RECORDS),
+        ({"limit": 1, "offset": 1}, TEST_RECORDS),
+        ({"key": "key1"}, []),
+        ({"limit": 1, "offset": 1}, []),
     ],
 )
+@pytest.mark.happy_path
 def test_find(client, query, records):
     enc_data = [dict(x) for x in records]
     for rec in enc_data:
-        rec = client.encrypt_record(rec)
+        rec = client.encrypt_payload(rec)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -126,7 +166,10 @@ def test_find(client, query, records):
     received_payload.should.have.key('filter')
     received_payload.should.have.key('options')
     received_payload['options'].should.equal(
-        {'limit': query.get('limit', 0), 'offset': query.get('offset', 0)}
+        {
+            'limit': query.get('limit', incountry.Storage.FIND_LIMIT),
+            'offset': query.get('offset', 0),
+        }
     )
 
     if query.get('range_key', None):
@@ -150,20 +193,6 @@ def test_find(client, query, records):
 
 @httpretty.activate
 @pytest.mark.parametrize(
-    'query', [{"key": "key1", "limit": -1}, {"key": "key1", "limit": 1, "offset": -1}]
-)
-def test_find_error(client, query):
-    httpretty.register_uri(
-        httpretty.POST,
-        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/find',
-        body=json.dumps({'meta': {'total': 0}, 'data': []}),
-    )
-
-    client.find.when.called_with(country=COUNTRY, **query).should.have.raised(Exception)
-
-
-@httpretty.activate
-@pytest.mark.parametrize(
     'query,record',
     [
         ({"key": "key1"}, {"country": COUNTRY, "key": "key1"}),
@@ -171,11 +200,12 @@ def test_find_error(client, query):
         ({"key": "key3"}, None),
     ],
 )
+@pytest.mark.happy_path
 def test_find_one(client, query, record):
     stored_record = None
     if record:
         stored_record = dict(record)
-        stored_record = client.encrypt_record(stored_record)
+        stored_record = client.encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -190,3 +220,104 @@ def test_find_one(client, query, record):
 
     find_one_response = client.find_one(country=COUNTRY, **query)
     find_one_response.should.equal(record)
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    'query',
+    [
+        {"key": "key1", "limit": -1},
+        {"key": "key1", "limit": 101},
+        {"key": "key1", "limit": 1, "offset": -1},
+    ],
+)
+@pytest.mark.error_path
+def test_find_error(client, query):
+    httpretty.register_uri(
+        httpretty.POST,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/find',
+        body=json.dumps({'meta': {'total': 0}, 'data': []}),
+    )
+
+    client.find.when.called_with(country=COUNTRY, **query).should.have.raised(
+        incountry.StorageClientError
+    )
+
+
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        ({}),
+        ({'api_key': 'test'}),
+        ({'environment_id': 'test'}),
+        ({'environment_id': 'test', 'api_key': 'test'}),
+        ({'environment_id': 'test', 'api_key': 'test', 'encrypt': True}),
+    ],
+)
+@pytest.mark.error_path
+def test_init_error_on_insufficient_args(client, kwargs):
+    incountry.Storage.when.called_with(**kwargs).should.have.raised(Exception)
+
+
+@httpretty.activate
+@pytest.mark.parametrize('record', [TEST_RECORDS[0]])
+@pytest.mark.error_path
+def test_error_on_popapi_error(client, record):
+    stored_record = dict(record)
+    stored_record = client.encrypt_payload(stored_record)
+
+    httpretty.register_uri(
+        httpretty.POST,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/find',
+        status=400,
+    )
+    httpretty.register_uri(
+        httpretty.POST, 'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY, status=400
+    )
+    httpretty.register_uri(
+        httpretty.GET,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/' + stored_record['key'],
+        status=400,
+    )
+    httpretty.register_uri(
+        httpretty.DELETE,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/' + stored_record['key'],
+        status=400,
+    )
+
+    client.write.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client.read.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client.delete.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client.find.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client.find_one.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+
+
+@pytest.mark.parametrize('record', [{}, {'country': COUNTRY}, {'key': 'key1'}])
+@pytest.mark.error_path
+def test_error_write_insufficient_args(client, record):
+    client.write.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.parametrize('record', [{'country': None, 'key': None}])
+@pytest.mark.error_path
+def test_error_read_insufficient_args(client, record):
+    client.read.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.parametrize('record', [{}, {'country': COUNTRY}, {'key': 'key1'}])
+@pytest.mark.error_path
+def test_error_delete_insufficient_args(client, record):
+    client.delete.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.parametrize('record', [{}])
+@pytest.mark.error_path
+def test_error_find_insufficient_args(client, record):
+    client.find.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.parametrize('record', [{}])
+@pytest.mark.error_path
+def test_error_find_one_insufficient_args(client, record):
+    client.find_one.when.called_with(**record).should.have.raised(Exception)
+

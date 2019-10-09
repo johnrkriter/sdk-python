@@ -8,6 +8,8 @@ pytest = "*"
 black = "*"
 httpretty = "*"
 sure = "*"
+pytest-cov = "*"
+pytest-tldr = "*"
 
 [packages]
 requests = "*"
@@ -15,14 +17,13 @@ setuptools = "*"
 wheel = "*"
 twine = "*"
 pycryptodome = "*"
-jsonschema = "*"
 
 [requires]
 python_version = "3.7"
 
 [scripts]
-tests = "pytest --ignore=tests/integrations"
-integrations = "pytest --rootdir=tests/integrations"
+tests = "pytest --ignore=tests/integrations --cov=incountry --cov-report term-missing -v"
+integrations = "pytest --rootdir=tests/integrations --cov=incountry --cov-report term-missing -v"
 
 [pipenv]
 allow_prereleases = true
