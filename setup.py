@@ -18,11 +18,11 @@ URL = 'https://github.com/incountry/incountry-sdks'
 EMAIL = 'developers@incountry.com'
 AUTHOR = 'InCountry'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'requests','pycrypto'
+    'requests', 'pycryptodome'
 ]
 
 # What packages are optional?
