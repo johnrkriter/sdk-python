@@ -18,14 +18,14 @@ and now use the SDK:
     > incdb = incountry.Storage(env_id="4e00667a-58a4-420b-97b7-243073124b89", \
                   api_key="key.yowivz.8ec54a9e647d43cbbc66-8b3096e7a70f", secret_key="any secret value")
 
-    > incdb.write(country='jp', key='key1', body="Store this data in Japan")
+    > incdb.write(country='ru', key='key1', body="Store this data in Japan")
 
-	> r = incdb.read(country='jp', key='key1')
+	> r = incdb.read(country='ru', key='key1')
 	> print(r)
 	{'body': 'Store this data in Japan', 'key': 'key1', 'key2': None, 'key3': None, 'profile_key': None, 'range_key': None, 'version': 1, 'env_id': 645}
 
-    > incdb.delete(country='jp', key='key1')
-    > r = incdb.read(country='jp', key='key1')
+    > incdb.delete(country='ru', key='key1')
+    > r = incdb.read(country='ru', key='key1')
     > print(r)
     None
 
