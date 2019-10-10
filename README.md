@@ -10,10 +10,10 @@ from incountry import Storage
 
 storage = Storage(
     # Required to be passed in, or as environment variable INC_API_KEY
-    apiKey='string',
+    api_key='string',
 
     # Required to be passed in, or as environment variable INC_ENVIRONMENT_ID
-    environmentId='string'
+    environment_id='string'
 )
 ```
 2. Writes
@@ -30,13 +30,13 @@ write_response = storage.write(
 
     # Optional
     profile_key='string',
-    
+
     # Optional
     range_key='string',
 
     # Optional
     key2='string',
-    
+
     # Optional
     key3='string'
 )

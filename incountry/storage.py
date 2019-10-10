@@ -8,6 +8,8 @@ import pdb
 
 from .incountry_crypto import InCrypto
 
+PORTALBACKEND_URI = "https://portal-backend.incountry.com";
+DEFAULT_ENDPOINT = "https://us.api.incountry.io";
 
 class StorageError(Exception):
 	pass
@@ -167,30 +169,32 @@ class Storage(object):
 				record[k] = self.crypto.decrypt(record[k])
 
 
+	def get_midpop_country_codes(self):
+		r = requests.get(PORTALBACKEND_URI + '/countries')
+		self.raise_if_server_error(r)
+		data = r.json()
+
+		return [country['id'].lower() for country in data['countries'] if country['direct'] == True]
+
 	def getendpoint(self, country, path):
-		# TODO: Make countries set cover ALL countries, indicating mini or med POP
-		protocol = "http"
-		if self.use_ssl:
-			protocol = "https"
+		midpops = self.get_midpop_country_codes()
 
 		if not path.startswith("/"):
 			path = "/" + path
 
-		host = self.endpoint
+		is_midpop = country in midpops
 
-		if not host:
-			host = country + ".api.incountry.io"
-			try:
-				socket.gethostbyname(host)
-			except socket.gaierror:
-				print("Failed to lookup host for {}".format(host))
-				# POP not registered yet, so fall back to US
-				host = "us.api.incountry.io"
+		res = ''
 
-		res = "{}://{}{}".format(protocol, host, path)
+		if is_midpop:
+			res = "https://{}.api.incountry.io{}".format(country, path)
+		elif self.endpoint:
+			res = "{}{}".format(self.endpoint, path)
+		else:
+			res = "{}{}".format(DEFAULT_ENDPOINT, path)
+
 		self.log("Endpoint: ", res)
 		return res
-
 
 
 	def headers(self):
