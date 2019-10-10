@@ -157,7 +157,10 @@ class Storage(object):
 
         return {
             'meta': response['meta'],
-            'data': [self.decrypt_payload(record) for record in response['data']],
+            'data': [
+                self.decrypt_payload(record) if self.encrypt else record
+                for record in response['data']
+            ],
         }
 
     def find_one(self, offset=0, **kwargs):

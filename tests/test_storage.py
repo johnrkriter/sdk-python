@@ -36,25 +36,29 @@ TEST_RECORDS = [
 
 @pytest.fixture()
 def client():
-    yield incountry.Storage(
-        encrypt=True,
-        debug=True,
-        environment_id='test',
-        api_key='test',
-        endpoint=POPAPI_URL,
-        secret_key=SECRET_KEY,
-    )
+    def cli(encrypt=True):
+        return incountry.Storage(
+            encrypt=encrypt,
+            debug=True,
+            environment_id='test',
+            api_key='test',
+            endpoint=POPAPI_URL,
+            secret_key=SECRET_KEY,
+        )
+
+    return cli
 
 
 @httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
-def test_write(client, record):
+def test_write(client, record, encrypt):
     httpretty.register_uri(
         httpretty.POST, 'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY
     )
 
-    client.write(**record)
+    client(encrypt).write(**record)
 
     received_payload = json.loads(httpretty.last_request().body)
 
@@ -64,16 +68,20 @@ def test_write(client, record):
         assert received_payload['range_key'] == record['range_key']
 
     for k in ['body', 'key', 'key2', 'key3', 'profile_key']:
-        if record.get(k, None):
+        if record.get(k, None) and encrypt:
             assert received_payload[k] != record[k]
+        if record.get(k, None) and not encrypt:
+            assert received_payload[k] == record[k]
 
 
 @httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
-def test_read(client, record):
+def test_read(client, record, encrypt):
     stored_record = dict(record)
-    stored_record = client.encrypt_payload(stored_record)
+    if encrypt:
+        stored_record = client(encrypt).encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.GET,
@@ -81,7 +89,7 @@ def test_read(client, record):
         body=json.dumps(stored_record),
     )
 
-    record_response = client.read(country=record['country'], key=record['key'])
+    record_response = client(encrypt).read(country=record['country'], key=record['key'])
 
     assert record_response['country'] == record['country']
     assert record_response['key'] == record['key']
@@ -91,30 +99,14 @@ def test_read(client, record):
 
 @httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
-def test_read_404(client, record):
-    stored_record = dict(record)
-    stored_record = client.encrypt_payload(stored_record)
-
-    httpretty.register_uri(
-        httpretty.GET,
-        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record['key'],
-        status=404,
-    )
-
-    record_response = client.read(country=record['country'], key=record['key'])
-
-    assert record_response is None
-
-
-@httpretty.activate
-@pytest.mark.parametrize('record', TEST_RECORDS)
-@pytest.mark.happy_path
-def test_delete(client, record):
+def test_delete(client, record, encrypt):
     response = {'result': 'OK'}
 
     stored_record = dict(record)
-    stored_record = client.encrypt_payload(stored_record)
+    if encrypt:
+        stored_record = client(encrypt).encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.DELETE,
@@ -122,7 +114,7 @@ def test_delete(client, record):
         body=json.dumps(response),
     )
 
-    record_response = client.delete(country=record['country'], key=record['key'])
+    record_response = client(encrypt).delete(country=record['country'], key=record['key'])
 
     record_response.should.be.equal(response)
 
@@ -147,11 +139,13 @@ def test_delete(client, record):
         ({"limit": 1, "offset": 1}, []),
     ],
 )
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
-def test_find(client, query, records):
+def test_find(client, query, records, encrypt):
     enc_data = [dict(x) for x in records]
-    for rec in enc_data:
-        rec = client.encrypt_payload(rec)
+    if encrypt:
+        for rec in enc_data:
+            rec = client(encrypt).encrypt_payload(rec)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -159,7 +153,7 @@ def test_find(client, query, records):
         body=json.dumps({'meta': {'total': len(enc_data)}, 'data': enc_data}),
     )
 
-    find_response = client.find(country=COUNTRY, **query)
+    find_response = client(encrypt).find(country=COUNTRY, **query)
 
     received_payload = json.loads(httpretty.last_request().body)
     received_payload.should.be.a(dict)
@@ -176,8 +170,10 @@ def test_find(client, query, records):
         assert received_payload['filter']['range_key'] == query['range_key']
 
     for k in ['key', 'key2', 'key3', 'profile_key']:
-        if query.get(k, None):
+        if query.get(k, None) and encrypt:
             assert received_payload['filter'][k] != query[k]
+        if query.get(k, None) and not encrypt:
+            assert received_payload['filter'][k] == query[k]
 
     find_response.should.be.a(dict)
 
@@ -187,8 +183,10 @@ def test_find(client, query, records):
             if match.get(k, None):
                 assert data_record[k] == match[k]
         for k in ['key2', 'key3', 'profile_key']:
-            if match.get(k, None):
+            if match.get(k, None) and encrypt:
                 assert data_record[k] != match[k]
+            if match.get(k, None) and not encrypt:
+                assert data_record[k] == match[k]
 
 
 @httpretty.activate
@@ -200,12 +198,14 @@ def test_find(client, query, records):
         ({"key": "key3"}, None),
     ],
 )
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
-def test_find_one(client, query, record):
+def test_find_one(client, query, record, encrypt):
     stored_record = None
     if record:
         stored_record = dict(record)
-        stored_record = client.encrypt_payload(stored_record)
+        if encrypt:
+            stored_record = client(encrypt).encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -218,7 +218,7 @@ def test_find_one(client, query, record):
         ),
     )
 
-    find_one_response = client.find_one(country=COUNTRY, **query)
+    find_one_response = client(encrypt).find_one(country=COUNTRY, **query)
     find_one_response.should.equal(record)
 
 
@@ -239,7 +239,7 @@ def test_find_error(client, query):
         body=json.dumps({'meta': {'total': 0}, 'data': []}),
     )
 
-    client.find.when.called_with(country=COUNTRY, **query).should.have.raised(
+    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
         incountry.StorageClientError
     )
 
@@ -261,10 +261,12 @@ def test_init_error_on_insufficient_args(client, kwargs):
 
 @httpretty.activate
 @pytest.mark.parametrize('record', [TEST_RECORDS[0]])
+@pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.error_path
-def test_error_on_popapi_error(client, record):
+def test_error_on_popapi_error(client, record, encrypt):
     stored_record = dict(record)
-    stored_record = client.encrypt_payload(stored_record)
+    if encrypt:
+        stored_record = client(encrypt).encrypt_payload(stored_record)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -285,39 +287,44 @@ def test_error_on_popapi_error(client, record):
         status=400,
     )
 
-    client.write.when.called_with(**record).should.have.raised(incountry.StorageServerError)
-    client.read.when.called_with(**record).should.have.raised(incountry.StorageServerError)
-    client.delete.when.called_with(**record).should.have.raised(incountry.StorageServerError)
-    client.find.when.called_with(**record).should.have.raised(incountry.StorageServerError)
-    client.find_one.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client(encrypt).write.when.called_with(**record).should.have.raised(
+        incountry.StorageServerError
+    )
+    client(encrypt).read.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client(encrypt).delete.when.called_with(**record).should.have.raised(
+        incountry.StorageServerError
+    )
+    client(encrypt).find.when.called_with(**record).should.have.raised(incountry.StorageServerError)
+    client(encrypt).find_one.when.called_with(**record).should.have.raised(
+        incountry.StorageServerError
+    )
 
 
 @pytest.mark.parametrize('record', [{}, {'country': COUNTRY}, {'key': 'key1'}])
 @pytest.mark.error_path
 def test_error_write_insufficient_args(client, record):
-    client.write.when.called_with(**record).should.have.raised(Exception)
+    client().write.when.called_with(**record).should.have.raised(Exception)
 
 
 @pytest.mark.parametrize('record', [{'country': None, 'key': None}])
 @pytest.mark.error_path
 def test_error_read_insufficient_args(client, record):
-    client.read.when.called_with(**record).should.have.raised(Exception)
+    client().read.when.called_with(**record).should.have.raised(Exception)
 
 
 @pytest.mark.parametrize('record', [{}, {'country': COUNTRY}, {'key': 'key1'}])
 @pytest.mark.error_path
 def test_error_delete_insufficient_args(client, record):
-    client.delete.when.called_with(**record).should.have.raised(Exception)
+    client().delete.when.called_with(**record).should.have.raised(Exception)
 
 
 @pytest.mark.parametrize('record', [{}])
 @pytest.mark.error_path
 def test_error_find_insufficient_args(client, record):
-    client.find.when.called_with(**record).should.have.raised(Exception)
+    client().find.when.called_with(**record).should.have.raised(Exception)
 
 
 @pytest.mark.parametrize('record', [{}])
 @pytest.mark.error_path
 def test_error_find_one_insufficient_args(client, record):
-    client.find_one.when.called_with(**record).should.have.raised(Exception)
-
+    client().find_one.when.called_with(**record).should.have.raised(Exception)
