@@ -33,7 +33,6 @@ class Storage(object):
 
 			@param environment_id: The id of the environment into which you wll store data
 			@param api_key: Your API key
-			@param endpoint: Optional. Will use DNS routing by default.
 			@param encrypt: Pass True (default) to encrypt values before storing
 			@param secret_key: pass the encryption key for AES encrypting fields
 			@param debug: pass True to enable some debug logging
@@ -56,7 +55,7 @@ class Storage(object):
 		if not self.api_key:
 			raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
-		self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
+		self.endpoint = endpoint or os.environ.get('INC_ENDPOINT') # or 'https://us.api.incountry.com'
 
 		# Defaults to DNS routing if endpoint is None
 		self.endpoint_map = {}
