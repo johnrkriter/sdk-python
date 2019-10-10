@@ -98,6 +98,26 @@ def test_read(client, record, encrypt):
 
 
 @httpretty.activate
+@pytest.mark.parametrize('record', [TEST_RECORDS[0]])
+@pytest.mark.parametrize('encrypt', [True, False])
+@pytest.mark.happy_path
+def test_read_not_found(client, record, encrypt):
+    stored_record = dict(record)
+    if encrypt:
+        stored_record = client(encrypt).encrypt_payload(stored_record)
+
+    httpretty.register_uri(
+        httpretty.GET,
+        'https://' + POPAPI_URL + "/v2/storage/records/" + COUNTRY + '/' + stored_record['key'],
+        status=404,
+    )
+
+    record_response = client(encrypt).read(country=record['country'], key=record['key'])
+
+    assert record_response is None
+
+
+@httpretty.activate
 @pytest.mark.parametrize('record', TEST_RECORDS)
 @pytest.mark.parametrize('encrypt', [True, False])
 @pytest.mark.happy_path
