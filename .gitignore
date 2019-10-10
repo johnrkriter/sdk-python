@@ -3,3 +3,6 @@ dist/
 incountry.egg-info
 .env
 *.pyc
+.idea
+bandit.json
+.coverage

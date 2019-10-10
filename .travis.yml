@@ -1,0 +1,19 @@
+addons:
+  sonarcloud:
+    organization: "incountry"
+
+language: python
+python:
+  - "3.7"
+node_js:
+  - 11
+
+install:
+  - pip3 install bandit
+  - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then npm install -g snyk; fi
+  - pipenv sync
+
+script:
+  - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then snyk monitor --org=incountry; fi
+  - bandit --ini bandit.ini -r -o bandit.json -f json || true
+  - sonar-scanner

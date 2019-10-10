@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -24,23 +25,14 @@ class InCrypto:
     @staticmethod
     def unpack_hex(enc):
         b_data = bytes.fromhex(enc)
-        min_len = (
-            InCrypto.SALT_LENGTH
-            + InCrypto.IV_LENGTH
-            + InCrypto.AUTH_TAG_LENGTH
-        )
+        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
         if len(b_data) < min_len:
             raise InCryptoException('Wrong cyphertext size')
         return [
             b_data[: InCrypto.SALT_LENGTH],
+            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
             b_data[
-                InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH
-                + InCrypto.IV_LENGTH
-            ],
-            b_data[
-                InCrypto.SALT_LENGTH
-                + InCrypto.IV_LENGTH : len(b_data)
-                - InCrypto.AUTH_TAG_LENGTH
+                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
             ],
             b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
@@ -55,9 +47,7 @@ class InCrypto:
 
         cipher = AES.new(key, AES.MODE_GCM, iv)
         try:
-            [encrypted, auth_tag] = cipher.encrypt_and_digest(
-                raw.encode("utf8")
-            )
+            [encrypted, auth_tag] = cipher.encrypt_and_digest(raw.encode("utf8"))
             return self.pack_hex(salt, iv, encrypted, auth_tag)
         except Exception as e:
             raise InCryptoException(e) from e
@@ -81,3 +71,11 @@ class InCrypto:
             InCrypto.PBKDF2_ROUNDS,
             InCrypto.DERIVED_KEY_LENGTH,
         )
+
+    def hash(self, data):
+        hash = (
+            hmac.new(self.password.encode('utf-8'), data.encode('utf-8'), digestmod=hashlib.sha256)
+            .digest()
+            .hex()
+        )
+        return hash
