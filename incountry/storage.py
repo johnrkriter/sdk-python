@@ -22,6 +22,8 @@ class StorageServerError(StorageError):
 
 class Storage(object):
     FIND_LIMIT = 100
+    PORTALBACKEND_URI = "https://portal-backend.incountry.com"
+    DEFAULT_ENDPOINT = "https://us.api.incountry.io"
 
     def __init__(
         self,
@@ -69,11 +71,6 @@ class Storage(object):
 
         self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
 
-        # Defaults to DNS routing if endpoint is None
-        self.endpoint_map = {}
-
-        self.use_ssl = use_ssl
-
         if self.endpoint:
             self.log("Connecting to storage endpoint: ", self.endpoint)
         self.log("Using API key: ", self.api_key)
@@ -95,13 +92,12 @@ class Storage(object):
             if record_kwargs.get(k):
                 data[k] = record_kwargs.get(k)
 
-        if self.encrypt:
-            self.encrypt_payload(data)
+        data_to_send = self.encrypt_payload(data) if self.encrypt else data
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country),
             headers=self.headers(),
-            data=json.dumps(data),
+            data=json.dumps(data_to_send),
         )
 
         self.raise_if_server_error(r)
@@ -124,10 +120,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        if self.encrypt:
-            self.decrypt_payload(data)
-
-        return data
+        return self.decrypt_payload(data) if self.encrypt else data
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
         if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
@@ -144,7 +137,7 @@ class Storage(object):
                 filter_params[k] = filter_kwargs.get(k)
 
         if self.encrypt:
-            self.encrypt_payload(filter_params)
+            filter_params = self.encrypt_payload(filter_params)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
@@ -188,48 +181,54 @@ class Storage(object):
             print("[incountry] ", args)
 
     def encrypt_payload(self, record):
-        if record.get('body'):
-            record['body'] = self.crypto.encrypt(record['body'])
-        if record.get('key'):
-            if isinstance(record.get('key'), list):
-                record['key'] = [self.crypto.encrypt(x) for x in record['key']]
+        res = dict(record)
+        if res.get('body'):
+            res['body'] = self.crypto.encrypt(res['body'])
+        if res.get('key'):
+            if isinstance(res.get('key'), list):
+                res['key'] = [self.crypto.encrypt(x) for x in res['key']]
             else:
-                record['key'] = self.crypto.encrypt(record['key'])
+                res['key'] = self.crypto.encrypt(res['key'])
         for k in ['profile_key', 'key2', 'key3']:
-            if record.get(k, None) and isinstance(record[k], list):
-                record[k] = [self.crypto.hash(x + ':' + self.env_id) for x in record[k]]
-            elif record.get(k, None):
-                record[k] = self.crypto.hash(record[k] + ':' + self.env_id)
-        return record
+            if res.get(k, None) and isinstance(res[k], list):
+                res[k] = [self.crypto.hash(x + ':' + self.env_id) for x in res[k]]
+            elif res.get(k, None):
+                res[k] = self.crypto.hash(res[k] + ':' + self.env_id)
+        return res
 
     def decrypt_payload(self, record):
-        if record.get('body'):
-            record['body'] = self.crypto.decrypt(record['body'])
+        res = dict(record)
+        if res.get('body'):
+            res['body'] = self.crypto.decrypt(res['body'])
         if record.get('key'):
-            record['key'] = self.crypto.decrypt(record['key'])
-        return record
+            res['key'] = self.crypto.decrypt(res['key'])
+        return res
+
+    def get_midpop_country_codes(self):
+        r = requests.get(self.PORTALBACKEND_URI + '/countries')
+
+        self.raise_if_server_error(r)
+        data = r.json()
+
+        return [country['id'].lower() for country in data['countries'] if country['direct'] == True]
 
     def getendpoint(self, country, path):
-        # TODO: Make countries set cover ALL countries, indicating mini or med POP
-        protocol = "http"
-        if self.use_ssl:
-            protocol = "https"
+        midpops = self.get_midpop_country_codes()
 
         if not path.startswith("/"):
             path = "/" + path
 
-        host = self.endpoint
+        is_midpop = country in midpops
 
-        if not host:
-            host = country + ".api.incountry.io"
-            try:
-                socket.gethostbyname(host)
-            except socket.gaierror:
-                print("Failed to lookup host for {}".format(host))
-                # POP not registered yet, so fall back to US
-                host = "us.api.incountry.io"
+        res = ''
 
-        res = "{}://{}{}".format(protocol, host, path)
+        if is_midpop:
+            res = "https://{}.api.incountry.io{}".format(country, path)
+        elif self.endpoint:
+            res = "{}{}".format(self.endpoint, path)
+        else:
+            res = "{}{}".format(self.DEFAULT_ENDPOINT, path)
+
         self.log("Endpoint: ", res)
         return res
 
