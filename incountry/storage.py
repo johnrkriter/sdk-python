@@ -92,7 +92,7 @@ class Storage(object):
             if record_kwargs.get(k):
                 data[k] = record_kwargs.get(k)
 
-        data_to_send = self.encrypt_payload(data) if self.encrypt else data
+        data_to_send = self.encrypt_record(data) if self.encrypt else data
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country),
@@ -106,7 +106,7 @@ class Storage(object):
         country = country.lower()
 
         if self.encrypt:
-            key = self.crypto.encrypt(key)
+            key = self.hash_custom_key(key)
 
         r = requests.get(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
@@ -120,7 +120,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        return self.decrypt_payload(data) if self.encrypt else data
+        return self.decrypt_record(data) if self.encrypt else data
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
         if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
@@ -137,7 +137,7 @@ class Storage(object):
                 filter_params[k] = filter_kwargs.get(k)
 
         if self.encrypt:
-            filter_params = self.encrypt_payload(filter_params)
+            filter_params = self.hash_find_keys(filter_params)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
@@ -151,7 +151,7 @@ class Storage(object):
         return {
             'meta': response['meta'],
             'data': [
-                self.decrypt_payload(record) if self.encrypt else record
+                self.decrypt_record(record) if self.encrypt else record
                 for record in response['data']
             ],
         }
@@ -164,7 +164,7 @@ class Storage(object):
         country = country.lower()
 
         if self.encrypt:
-            key = self.crypto.encrypt(key)
+            key = self.hash_custom_key(key)
 
         r = requests.delete(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
@@ -180,28 +180,46 @@ class Storage(object):
         if self.debug:
             print("[incountry] ", args)
 
-    def encrypt_payload(self, record):
-        res = dict(record)
-        if res.get('body'):
-            res['body'] = self.crypto.encrypt(res['body'])
-        if res.get('key'):
-            if isinstance(res.get('key'), list):
-                res['key'] = [self.crypto.encrypt(x) for x in res['key']]
-            else:
-                res['key'] = self.crypto.encrypt(res['key'])
-        for k in ['profile_key', 'key2', 'key3']:
+    def hash_custom_key(self, value):
+        return self.crypto.hash(value + ':' + self.env_id)
+
+    def hash_find_keys(self, filter_params):
+        res = dict(filter_params)
+        for k in ['key', 'key2', 'key3', 'profile_key']:
             if res.get(k, None) and isinstance(res[k], list):
-                res[k] = [self.crypto.hash(x + ':' + self.env_id) for x in res[k]]
+                res[k] = [self.hash_custom_key(x) for x in res[k]]
             elif res.get(k, None):
-                res[k] = self.crypto.hash(res[k] + ':' + self.env_id)
+                res[k] = self.hash_custom_key(res[k])
         return res
 
-    def decrypt_payload(self, record):
+    def encrypt_record(self, record):
+        res = dict(record)
+        body = {"meta": {}, "payload": None}
+        for k in ['key', 'key2', 'key3', 'profile_key']:
+            if res.get(k):
+                body["meta"][k] = res.get(k)
+                res[k] = self.hash_custom_key(res[k])
+        if res.get('body'):
+            body['payload'] = res.get('body')
+
+        res['body'] = self.crypto.encrypt(json.dumps(body))
+        return res
+
+    def decrypt_record(self, record):
         res = dict(record)
         if res.get('body'):
             res['body'] = self.crypto.decrypt(res['body'])
-        if record.get('key'):
-            res['key'] = self.crypto.decrypt(res['key'])
+            try:
+                body = json.loads(res['body'])
+                if body.get('payload'):
+                    res['body'] = body.get('payload')
+                else:
+                    del res['body']
+                for k in ['key', 'key2', 'key3', 'profile_key']:
+                    if record.get(k) and body['meta'].get(k):
+                        res[k] = body['meta'][k]
+            except Exception:
+                pass
         return res
 
     def get_midpop_country_codes(self):
@@ -210,7 +228,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        return [country['id'].lower() for country in data['countries'] if country['direct'] == True]
+        return [country['id'].lower() for country in data['countries'] if country['direct'] is True]
 
     def getendpoint(self, country, path):
         midpops = self.get_midpop_country_codes()

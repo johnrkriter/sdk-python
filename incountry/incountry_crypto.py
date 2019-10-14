@@ -1,8 +1,5 @@
 import hmac
 import hashlib
-import os
-import struct
-from os import urandom
 
 from Crypto.Cipher import AES
 
@@ -29,5 +26,4 @@ class InCrypto:
         return unpad(cipher.decrypt(enc)).decode('utf8')
 
     def hash(self, data):
-        hash = hmac.new(self.salt, data.encode('utf-8'), digestmod=hashlib.sha256).digest().hex()
-        return hash
+        return hashlib.sha256(data.encode('utf-8')).hexdigest()
