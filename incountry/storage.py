@@ -1,9 +1,8 @@
 from __future__ import absolute_import
 import os
-import socket
-import json
 
 import requests
+import json
 
 from .incountry_crypto import InCrypto
 
@@ -32,7 +31,6 @@ class Storage(object):
         endpoint=None,
         encrypt=True,
         secret_key=None,
-        use_ssl=True,
         debug=False,
     ):
         """
@@ -112,7 +110,6 @@ class Storage(object):
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
             headers=self.headers(),
         )
-
         if r.status_code == 404:
             # Not found is ok
             return None
@@ -174,7 +171,7 @@ class Storage(object):
         return r.json()
 
     ###########################################
-    ########### Common functions
+    # Common functions
     ###########################################
     def log(self, *args):
         if self.debug:
@@ -232,21 +229,23 @@ class Storage(object):
         return [country['id'].lower() for country in data['countries'] if country['direct'] is True]
 
     def getendpoint(self, country, path):
-        midpops = self.get_midpop_country_codes()
-
         if not path.startswith("/"):
             path = "/" + path
 
+        if self.endpoint:
+            res = "{}{}".format(self.endpoint, path)
+            self.log("Endpoint: ", res)
+            return res
+
+        midpops = self.get_midpop_country_codes()
+
         is_midpop = country in midpops
 
-        res = ''
-
-        if is_midpop:
-            res = "https://{}.api.incountry.io{}".format(country, path)
-        elif self.endpoint:
-            res = "{}{}".format(self.endpoint, path)
-        else:
-            res = "{}{}".format(self.DEFAULT_ENDPOINT, path)
+        res = (
+            "https://{}.api.incountry.io{}".format(country, path)
+            if is_midpop
+            else "{}{}".format(self.DEFAULT_ENDPOINT, path)
+        )
 
         self.log("Endpoint: ", res)
         return res
