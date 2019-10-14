@@ -24,6 +24,10 @@ class Storage(object):
     PORTALBACKEND_URI = "https://portal-backend.incountry.com"
     DEFAULT_ENDPOINT = "https://us.api.incountry.io"
 
+    @staticmethod
+    def get_midpop_url(country):
+        return "https://{}.api.incountry.io".format(country)
+
     def __init__(
         self,
         environment_id=None,
@@ -205,8 +209,8 @@ class Storage(object):
     def decrypt_record(self, record):
         res = dict(record)
         if res.get('body'):
+            res['body'] = self.crypto.decrypt(res['body'])
             try:
-                res['body'] = self.crypto.decrypt(res['body'])
                 body = json.loads(res['body'])
                 if body.get('payload'):
                     res['body'] = body.get('payload')
@@ -216,8 +220,7 @@ class Storage(object):
                     if record.get(k) and body['meta'].get(k):
                         res[k] = body['meta'][k]
             except Exception:
-                # Old data format
-                res['body'] = self.crypto.decrypt(res['body'])
+                res['body'] = res['body']
         return res
 
     def get_midpop_country_codes(self):
@@ -226,7 +229,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        return [country['id'].lower() for country in data['countries'] if country['direct'] is True]
+        return [country['id'].lower() for country in data['countries'] if country['direct']]
 
     def getendpoint(self, country, path):
         if not path.startswith("/"):
@@ -242,7 +245,7 @@ class Storage(object):
         is_midpop = country in midpops
 
         res = (
-            "https://{}.api.incountry.io{}".format(country, path)
+            Storage.get_midpop_url(country) + path
             if is_midpop
             else "{}{}".format(self.DEFAULT_ENDPOINT, path)
         )
@@ -262,4 +265,3 @@ class Storage(object):
             raise StorageServerError(
                 "{} {} - {}".format(response.status_code, response.url, response.text)
             )
-
