@@ -220,7 +220,7 @@ class Storage(object):
                     if record.get(k) and body['meta'].get(k):
                         res[k] = body['meta'][k]
             except Exception:
-                res['body'] = res['body']
+                pass
         return res
 
     def get_midpop_country_codes(self):
