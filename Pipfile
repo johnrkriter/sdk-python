@@ -5,6 +5,11 @@ verify_ssl = true
 
 [dev-packages]
 pytest = "*"
+black = "*"
+httpretty = "*"
+sure = "*"
+pytest-cov = "*"
+pytest-tldr = "*"
 
 [packages]
 requests = "*"
@@ -17,4 +22,8 @@ pycryptodome = "*"
 python_version = "3.7"
 
 [scripts]
-tests = "pytest"
+test = "pytest --ignore=tests/integration --cov=incountry --cov-report term-missing -v"
+integrations = "pytest --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report term-missing -v"
+
+[pipenv]
+allow_prereleases = true
