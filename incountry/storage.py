@@ -181,6 +181,13 @@ class Storage(object):
         if self.debug:
             print("[incountry] ", args)
 
+    def is_json(self, data):
+        try:
+            json.loads(data)
+        except ValueError:
+            return False
+        return True
+
     def hash_custom_key(self, value):
         return self.crypto.hash(value + ':' + self.env_id)
 
@@ -210,7 +217,7 @@ class Storage(object):
         res = dict(record)
         if res.get('body'):
             res['body'] = self.crypto.decrypt(res['body'])
-            try:
+            if self.is_json(res['body']):
                 body = json.loads(res['body'])
                 if body.get('payload'):
                     res['body'] = body.get('payload')
@@ -219,8 +226,6 @@ class Storage(object):
                 for k in ['key', 'key2', 'key3', 'profile_key']:
                     if record.get(k) and body['meta'].get(k):
                         res[k] = body['meta'][k]
-            except Exception:
-                pass
         return res
 
     def get_midpop_country_codes(self):
