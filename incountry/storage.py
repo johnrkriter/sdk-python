@@ -108,7 +108,7 @@ class Storage(object):
 
     def update_one(self, country: str, filters: dict, **record_kwargs):
         country = country.lower()
-        existing_records_response = self.find(country=country, limit=2, offset=0, **filters)
+        existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
 
         if existing_records_response["meta"]["total"] >= 2:
             raise StorageServerError("Multiple records found. Can not update")
