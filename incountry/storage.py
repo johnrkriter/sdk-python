@@ -1,9 +1,8 @@
 from __future__ import absolute_import
 import os
-import socket
-import json
 
 import requests
+import json
 
 from .incountry_crypto import InCrypto
 
@@ -22,6 +21,12 @@ class StorageServerError(StorageError):
 
 class Storage(object):
     FIND_LIMIT = 100
+    PORTALBACKEND_URI = "https://portal-backend.incountry.com"
+    DEFAULT_ENDPOINT = "https://us.api.incountry.io"
+
+    @staticmethod
+    def get_midpop_url(country):
+        return "https://{}.api.incountry.io".format(country)
 
     def __init__(
         self,
@@ -30,7 +35,6 @@ class Storage(object):
         endpoint=None,
         encrypt=True,
         secret_key=None,
-        use_ssl=True,
         debug=False,
     ):
         """
@@ -59,20 +63,15 @@ class Storage(object):
         """
         self.debug = debug
 
-        self.env_id = environment_id or os.environ.get('INC_ENVIRONMENT_ID')
+        self.env_id = environment_id or os.environ.get("INC_ENVIRONMENT_ID")
         if not self.env_id:
             raise ValueError("Please pass environment_id param or set INC_ENVIRONMENT_ID env var")
 
-        self.api_key = api_key or os.environ.get('INC_API_KEY')
+        self.api_key = api_key or os.environ.get("INC_API_KEY")
         if not self.api_key:
             raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
-        self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
-
-        # Defaults to DNS routing if endpoint is None
-        self.endpoint_map = {}
-
-        self.use_ssl = use_ssl
+        self.endpoint = endpoint or os.environ.get("INC_ENDPOINT")
 
         if self.endpoint:
             self.log("Connecting to storage endpoint: ", self.endpoint)
@@ -80,7 +79,7 @@ class Storage(object):
 
         self.encrypt = encrypt
         if encrypt:
-            self.secret_key = secret_key or os.environ.get('INC_SECRET_KEY')
+            self.secret_key = secret_key or os.environ.get("INC_SECRET_KEY")
             if not self.secret_key:
                 raise ValueError(
                     "Encryption is on. Please pass secret_key param or set INC_SECRET_KEY env var"
@@ -91,32 +90,48 @@ class Storage(object):
         country = country.lower()
         data = {"country": country, "key": key}
 
-        for k in ['body', 'key2', 'key3', 'profile_key', 'range_key']:
+        for k in ["body", "key2", "key3", "profile_key", "range_key"]:
             if record_kwargs.get(k):
                 data[k] = record_kwargs.get(k)
 
-        if self.encrypt:
-            self.encrypt_payload(data)
+        data_to_send = self.encrypt_record(data) if self.encrypt else data
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country),
             headers=self.headers(),
-            data=json.dumps(data),
+            data=json.dumps(data_to_send),
         )
 
         self.raise_if_server_error(r)
+
+        return data
+
+    def update_one(self, country: str, filters: dict, **record_kwargs):
+        country = country.lower()
+        existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
+
+        if existing_records_response["meta"]["total"] >= 2:
+            raise StorageServerError("Multiple records found. Can not update")
+
+        if existing_records_response["meta"]["total"] == 0:
+            raise StorageServerError("Record not found")
+
+        updated_record = {**existing_records_response["data"][0], **record_kwargs}
+
+        self.write(country=country, **updated_record)
+
+        return updated_record
 
     def read(self, country: str, key: str):
         country = country.lower()
 
         if self.encrypt:
-            key = self.crypto.encrypt(key)
+            key = self.hash_custom_key(key)
 
         r = requests.get(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
             headers=self.headers(),
         )
-
         if r.status_code == 404:
             # Not found is ok
             return None
@@ -124,10 +139,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        if self.encrypt:
-            self.decrypt_payload(data)
-
-        return data
+        return self.decrypt_record(data) if self.encrypt else data
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
         if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
@@ -139,12 +151,12 @@ class Storage(object):
         filter_params = {}
         options = {"limit": limit, "offset": offset}
 
-        for k in ['key', 'key2', 'key3', 'profile_key', 'range_key']:
+        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
             if filter_kwargs.get(k):
                 filter_params[k] = filter_kwargs.get(k)
 
         if self.encrypt:
-            self.encrypt_payload(filter_params)
+            filter_params = self.hash_find_keys(filter_params)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
@@ -156,22 +168,22 @@ class Storage(object):
         response = r.json()
 
         return {
-            'meta': response['meta'],
-            'data': [
-                self.decrypt_payload(record) if self.encrypt else record
-                for record in response['data']
+            "meta": response["meta"],
+            "data": [
+                self.decrypt_record(record) if self.encrypt else record
+                for record in response["data"]
             ],
         }
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
-        return result['data'][0] if len(result['data']) else None
+        return result["data"][0] if len(result["data"]) else None
 
     def delete(self, country: str, key: str):
         country = country.lower()
 
         if self.encrypt:
-            key = self.crypto.encrypt(key)
+            key = self.hash_custom_key(key)
 
         r = requests.delete(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
@@ -181,63 +193,94 @@ class Storage(object):
         return r.json()
 
     ###########################################
-    ########### Common functions
+    # Common functions
     ###########################################
     def log(self, *args):
         if self.debug:
             print("[incountry] ", args)
 
-    def encrypt_payload(self, record):
-        if record.get('body'):
-            record['body'] = self.crypto.encrypt(record['body'])
-        if record.get('key'):
-            if isinstance(record.get('key'), list):
-                record['key'] = [self.crypto.encrypt(x) for x in record['key']]
-            else:
-                record['key'] = self.crypto.encrypt(record['key'])
-        for k in ['profile_key', 'key2', 'key3']:
-            if record.get(k, None) and isinstance(record[k], list):
-                record[k] = [self.crypto.hash(x + ':' + self.env_id) for x in record[k]]
-            elif record.get(k, None):
-                record[k] = self.crypto.hash(record[k] + ':' + self.env_id)
-        return record
+    def is_json(self, data):
+        try:
+            json.loads(data)
+        except ValueError:
+            return False
+        return True
 
-    def decrypt_payload(self, record):
-        if record.get('body'):
-            record['body'] = self.crypto.decrypt(record['body'])
-        if record.get('key'):
-            record['key'] = self.crypto.decrypt(record['key'])
-        return record
+    def hash_custom_key(self, value):
+        return self.crypto.hash(value + ":" + self.env_id)
+
+    def hash_find_keys(self, filter_params):
+        res = dict(filter_params)
+        for k in ["key", "key2", "key3", "profile_key"]:
+            if res.get(k, None) and isinstance(res[k], list):
+                res[k] = [self.hash_custom_key(x) for x in res[k]]
+            elif res.get(k, None):
+                res[k] = self.hash_custom_key(res[k])
+        return res
+
+    def encrypt_record(self, record):
+        res = dict(record)
+        body = {"meta": {}, "payload": None}
+        for k in ["key", "key2", "key3", "profile_key"]:
+            if res.get(k):
+                body["meta"][k] = res.get(k)
+                res[k] = self.hash_custom_key(res[k])
+        if res.get("body"):
+            body["payload"] = res.get("body")
+
+        res["body"] = self.crypto.encrypt(json.dumps(body))
+        return res
+
+    def decrypt_record(self, record):
+        res = dict(record)
+        if res.get("body"):
+            res["body"] = self.crypto.decrypt(res["body"])
+            if self.is_json(res["body"]):
+                body = json.loads(res["body"])
+                if body.get("payload"):
+                    res["body"] = body.get("payload")
+                else:
+                    del res["body"]
+                for k in ["key", "key2", "key3", "profile_key"]:
+                    if record.get(k) and body["meta"].get(k):
+                        res[k] = body["meta"][k]
+        return res
+
+    def get_midpop_country_codes(self):
+        r = requests.get(self.PORTALBACKEND_URI + "/countries")
+
+        self.raise_if_server_error(r)
+        data = r.json()
+
+        return [country["id"].lower() for country in data["countries"] if country["direct"]]
 
     def getendpoint(self, country, path):
-        # TODO: Make countries set cover ALL countries, indicating mini or med POP
-        protocol = "http"
-        if self.use_ssl:
-            protocol = "https"
-
         if not path.startswith("/"):
             path = "/" + path
 
-        host = self.endpoint
+        if self.endpoint:
+            res = "{}{}".format(self.endpoint, path)
+            self.log("Endpoint: ", res)
+            return res
 
-        if not host:
-            host = country + ".api.incountry.io"
-            try:
-                socket.gethostbyname(host)
-            except socket.gaierror:
-                print("Failed to lookup host for {}".format(host))
-                # POP not registered yet, so fall back to US
-                host = "us.api.incountry.io"
+        midpops = self.get_midpop_country_codes()
 
-        res = "{}://{}{}".format(protocol, host, path)
+        is_midpop = country in midpops
+
+        res = (
+            Storage.get_midpop_url(country) + path
+            if is_midpop
+            else "{}{}".format(self.DEFAULT_ENDPOINT, path)
+        )
+
         self.log("Endpoint: ", res)
         return res
 
     def headers(self):
         return {
-            'Authorization': "Bearer " + self.api_key,
-            'x-env-id': self.env_id,
-            'Content-Type': 'application/json',
+            "Authorization": "Bearer " + self.api_key,
+            "x-env-id": self.env_id,
+            "Content-Type": "application/json",
         }
 
     def raise_if_server_error(self, response):
@@ -245,4 +288,3 @@ class Storage(object):
             raise StorageServerError(
                 "{} {} - {}".format(response.status_code, response.url, response.text)
             )
-

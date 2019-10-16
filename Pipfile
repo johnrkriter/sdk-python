@@ -22,8 +22,8 @@ pycryptodome = "*"
 python_version = "3.7"
 
 [scripts]
-tests = "pytest --ignore=tests/integrations --cov=incountry --cov-report term-missing -v"
-integrations = "pytest --rootdir=tests/integrations --cov=incountry --cov-report term-missing -v"
+test = "pytest --ignore=tests/integration --cov=incountry --cov-report term-missing -v"
+integrations = "pytest --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report term-missing -v"
 
 [pipenv]
 allow_prereleases = true
