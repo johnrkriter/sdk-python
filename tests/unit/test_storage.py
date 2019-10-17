@@ -5,7 +5,6 @@ import json
 import sure
 import httpretty
 
-
 POPAPI_URL = "https://popapi.com"
 COUNTRY = "us"
 SECRET_KEY = "password"
