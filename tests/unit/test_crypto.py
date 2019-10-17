@@ -1,8 +1,8 @@
-from Crypto.Random import get_random_bytes
-from incountry import InCrypto, InCryptoException
-
+import os
 import pytest
 import sure
+
+from incountry import InCrypto, InCryptoException
 
 PLAINTEXTS = [
     "",
@@ -39,10 +39,10 @@ PREPARED_HASH = {
 @pytest.mark.happy_path
 def test_pack_unpack():
     ENC_DATA_LENGTH = 10
-    data = get_random_bytes(ENC_DATA_LENGTH)
-    salt = get_random_bytes(InCrypto.SALT_LENGTH)
-    iv = get_random_bytes(InCrypto.IV_LENGTH)
-    auth_tag = get_random_bytes(InCrypto.AUTH_TAG_LENGTH)
+    data = os.urandom(ENC_DATA_LENGTH)
+    salt = os.urandom(InCrypto.SALT_LENGTH)
+    iv = os.urandom(InCrypto.IV_LENGTH)
+    auth_tag = os.urandom(InCrypto.AUTH_TAG_LENGTH)
 
     parts = [salt, iv, data, auth_tag]
     packed = InCrypto.pack_hex(salt, iv, data, auth_tag)

@@ -1,7 +1,8 @@
 import hashlib
+import os
 
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 
 
 class InCryptoException(Exception):
@@ -50,13 +51,16 @@ class InCrypto:
         raise InCryptoException("Unknown decryptor version requested")
 
     def encrypt(self, raw):
-        salt = get_random_bytes(InCrypto.SALT_LENGTH)
-        iv = get_random_bytes(InCrypto.IV_LENGTH)
+        salt = os.urandom(InCrypto.SALT_LENGTH)
+        iv = os.urandom(InCrypto.IV_LENGTH)
         key = self.get_key(self.password, salt)
 
-        cipher = AES.new(key, AES.MODE_GCM, iv)
+        encryptor = Cipher(
+            algorithms.AES(key), modes.GCM(iv), backend=default_backend()
+        ).encryptor()
         try:
-            [encrypted, auth_tag] = cipher.encrypt_and_digest(raw.encode("utf8"))
+            encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
+            auth_tag = encryptor.tag
             return self.ENC_VERSION + ":" + self.pack_hex(salt, iv, encrypted, auth_tag)
         except Exception as e:
             raise InCryptoException(e) from e
@@ -90,16 +94,19 @@ class InCrypto:
             return data[: -ord(data[len(data) - 1 :])]
 
         enc = bytes.fromhex(enc)
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        return unpad(cipher.decrypt(enc)).decode("utf8")
+        decryptor = Cipher(
+            algorithms.AES(key), modes.CBC(iv), backend=default_backend()
+        ).decryptor()
+        return unpad(decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def decrypt_v1(self, packed_enc):
         [salt, iv, enc, auth_tag] = self.unpack_hex(packed_enc)
         key = self.get_key(self.password, salt)
 
-        cipher = AES.new(key, AES.MODE_GCM, iv)
-
-        return cipher.decrypt_and_verify(enc, auth_tag).decode("utf8")
+        decryptor = Cipher(
+            algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()
+        ).decryptor()
+        return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def get_key(self, password, salt):
         return hashlib.pbkdf2_hmac(
