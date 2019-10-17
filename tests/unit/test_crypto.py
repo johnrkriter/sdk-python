@@ -16,10 +16,7 @@ PLAINTEXTS = [
 ]
 
 PREPARED_DATA_BY_VERSION = {
-    "0": [
-        (("7765618db31daf5366a6fc3520010327"), "InCountry", "password"),
-        (("0:7765618db31daf5366a6fc3520010327"), "InCountry", "password"),
-    ],
+    "0": [(("7765618db31daf5366a6fc3520010327"), "InCountry", "password")],
     "1": [
         (
             (
