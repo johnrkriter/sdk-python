@@ -63,15 +63,15 @@ class Storage(object):
         """
         self.debug = debug
 
-        self.env_id = environment_id or os.environ.get('INC_ENVIRONMENT_ID')
+        self.env_id = environment_id or os.environ.get("INC_ENVIRONMENT_ID")
         if not self.env_id:
             raise ValueError("Please pass environment_id param or set INC_ENVIRONMENT_ID env var")
 
-        self.api_key = api_key or os.environ.get('INC_API_KEY')
+        self.api_key = api_key or os.environ.get("INC_API_KEY")
         if not self.api_key:
             raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
-        self.endpoint = endpoint or os.environ.get('INC_ENDPOINT')
+        self.endpoint = endpoint or os.environ.get("INC_ENDPOINT")
 
         if self.endpoint:
             self.log("Connecting to storage endpoint: ", self.endpoint)
@@ -79,7 +79,7 @@ class Storage(object):
 
         self.encrypt = encrypt
         if encrypt:
-            self.secret_key = secret_key or os.environ.get('INC_SECRET_KEY')
+            self.secret_key = secret_key or os.environ.get("INC_SECRET_KEY")
             if not self.secret_key:
                 raise ValueError(
                     "Encryption is on. Please pass secret_key param or set INC_SECRET_KEY env var"
@@ -90,7 +90,7 @@ class Storage(object):
         country = country.lower()
         data = {"country": country, "key": key}
 
-        for k in ['body', 'key2', 'key3', 'profile_key', 'range_key']:
+        for k in ["body", "key2", "key3", "profile_key", "range_key"]:
             if record_kwargs.get(k):
                 data[k] = record_kwargs.get(k)
 
@@ -103,6 +103,24 @@ class Storage(object):
         )
 
         self.raise_if_server_error(r)
+
+        return data
+
+    def update_one(self, country: str, filters: dict, **record_kwargs):
+        country = country.lower()
+        existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
+
+        if existing_records_response["meta"]["total"] >= 2:
+            raise StorageServerError("Multiple records found. Can not update")
+
+        if existing_records_response["meta"]["total"] == 0:
+            raise StorageServerError("Record not found")
+
+        updated_record = {**existing_records_response["data"][0], **record_kwargs}
+
+        self.write(country=country, **updated_record)
+
+        return updated_record
 
     def read(self, country: str, key: str):
         country = country.lower()
@@ -133,7 +151,7 @@ class Storage(object):
         filter_params = {}
         options = {"limit": limit, "offset": offset}
 
-        for k in ['key', 'key2', 'key3', 'profile_key', 'range_key']:
+        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
             if filter_kwargs.get(k):
                 filter_params[k] = filter_kwargs.get(k)
 
@@ -150,16 +168,16 @@ class Storage(object):
         response = r.json()
 
         return {
-            'meta': response['meta'],
-            'data': [
+            "meta": response["meta"],
+            "data": [
                 self.decrypt_record(record) if self.encrypt else record
-                for record in response['data']
+                for record in response["data"]
             ],
         }
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
-        return result['data'][0] if len(result['data']) else None
+        return result["data"][0] if len(result["data"]) else None
 
     def delete(self, country: str, key: str):
         country = country.lower()
@@ -189,11 +207,11 @@ class Storage(object):
         return True
 
     def hash_custom_key(self, value):
-        return self.crypto.hash(value + ':' + self.env_id)
+        return self.crypto.hash(value + ":" + self.env_id)
 
     def hash_find_keys(self, filter_params):
         res = dict(filter_params)
-        for k in ['key', 'key2', 'key3', 'profile_key']:
+        for k in ["key", "key2", "key3", "profile_key"]:
             if res.get(k, None) and isinstance(res[k], list):
                 res[k] = [self.hash_custom_key(x) for x in res[k]]
             elif res.get(k, None):
@@ -203,38 +221,38 @@ class Storage(object):
     def encrypt_record(self, record):
         res = dict(record)
         body = {"meta": {}, "payload": None}
-        for k in ['key', 'key2', 'key3', 'profile_key']:
+        for k in ["key", "key2", "key3", "profile_key"]:
             if res.get(k):
                 body["meta"][k] = res.get(k)
                 res[k] = self.hash_custom_key(res[k])
-        if res.get('body'):
-            body['payload'] = res.get('body')
+        if res.get("body"):
+            body["payload"] = res.get("body")
 
-        res['body'] = self.crypto.encrypt(json.dumps(body))
+        res["body"] = self.crypto.encrypt(json.dumps(body))
         return res
 
     def decrypt_record(self, record):
         res = dict(record)
-        if res.get('body'):
-            res['body'] = self.crypto.decrypt(res['body'])
-            if self.is_json(res['body']):
-                body = json.loads(res['body'])
-                if body.get('payload'):
-                    res['body'] = body.get('payload')
+        if res.get("body"):
+            res["body"] = self.crypto.decrypt(res["body"])
+            if self.is_json(res["body"]):
+                body = json.loads(res["body"])
+                if body.get("payload"):
+                    res["body"] = body.get("payload")
                 else:
-                    del res['body']
-                for k in ['key', 'key2', 'key3', 'profile_key']:
-                    if record.get(k) and body['meta'].get(k):
-                        res[k] = body['meta'][k]
+                    del res["body"]
+                for k in ["key", "key2", "key3", "profile_key"]:
+                    if record.get(k) and body["meta"].get(k):
+                        res[k] = body["meta"][k]
         return res
 
     def get_midpop_country_codes(self):
-        r = requests.get(self.PORTALBACKEND_URI + '/countries')
+        r = requests.get(self.PORTALBACKEND_URI + "/countries")
 
         self.raise_if_server_error(r)
         data = r.json()
 
-        return [country['id'].lower() for country in data['countries'] if country['direct']]
+        return [country["id"].lower() for country in data["countries"] if country["direct"]]
 
     def getendpoint(self, country, path):
         if not path.startswith("/"):
@@ -260,9 +278,9 @@ class Storage(object):
 
     def headers(self):
         return {
-            'Authorization': "Bearer " + self.api_key,
-            'x-env-id': self.env_id,
-            'Content-Type': 'application/json',
+            "Authorization": "Bearer " + self.api_key,
+            "x-env-id": self.env_id,
+            "Content-Type": "application/json",
         }
 
     def raise_if_server_error(self, response):
