@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Note: this is a setup file for pip/pypi. It's not a part of the SDK package.
+
 # Note: To use the 'upload' functionality of this file, you must:
 #   $ pipenv install twine --dev
 
