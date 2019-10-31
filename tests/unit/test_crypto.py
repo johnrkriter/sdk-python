@@ -29,6 +29,16 @@ PREPARED_DATA_BY_VERSION = {
             "password",
         )
     ],
+    "2": [
+        (
+            (
+                "2:4Z1tUJsbUnuur37MSJNUBRbsk+68hyG59NaKKzd9yXX8qdgJMVVR9sOj9UVkQKR+x8QQJqNJKtkjFk/a3rHl"
+                "RZj1+Jfjc7J31ge2mdxbsle+TGU8ooT+gyFKY94zAq11et++y14="
+            ),
+            "InCountry",
+            "password",
+        )
+    ],
 }
 
 PREPARED_HASH = {

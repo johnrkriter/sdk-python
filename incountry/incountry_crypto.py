@@ -1,10 +1,12 @@
 import hashlib
 import os
+import base64
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
 from .exceptions import InCryptoException
+
 
 class InCrypto:
     SALT_LENGTH = 64  # Bytes
@@ -14,12 +16,18 @@ class InCrypto:
     DERIVED_KEY_LENGTH = 32  # Bytes
     PBKDF2_DIGEST = "sha512"
 
-    ENC_VERSION = "1"
+    ENC_VERSION = "2"
 
     @staticmethod
     def pack_hex(salt, iv, enc, auth_tag):
         parts = [salt, iv, enc, auth_tag]
         return "".join([x.hex() for x in parts])
+
+    @staticmethod
+    def pack_base64(salt, iv, enc, auth_tag):
+        parts = [salt, iv, enc, auth_tag]
+        joined_parts = b"".join(parts)
+        return base64.b64encode(joined_parts).decode("utf8")
 
     @staticmethod
     def unpack_hex(enc):
@@ -36,6 +44,22 @@ class InCrypto:
             b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
+    @staticmethod
+    def unpack_base64(enc):
+        b_data = base64.b64decode(enc)
+        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
+        if len(b_data) < min_len:
+            raise InCryptoException("Wrong ciphertext size")
+        return [
+            b_data[: InCrypto.SALT_LENGTH],
+            b_data[InCrypto.SALT_LENGTH: InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
+            b_data[
+            InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH: len(b_data) - InCrypto.AUTH_TAG_LENGTH
+            ],
+            b_data[-InCrypto.AUTH_TAG_LENGTH:],
+        ]
+
+
     def __init__(self, secret_key_accessor):
         self.secret_key_accessor = secret_key_accessor
 
@@ -44,6 +68,8 @@ class InCrypto:
             return self.decrypt_v0
         if version == "1":
             return self.decrypt_v1
+        if version == "2":
+            return self.decrypt_v2
 
         raise InCryptoException("Unknown decryptor version requested")
 
@@ -58,7 +84,7 @@ class InCrypto:
         try:
             encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
             auth_tag = encryptor.tag
-            return self.ENC_VERSION + ":" + self.pack_hex(salt, iv, encrypted, auth_tag)
+            return self.ENC_VERSION + ":" + self.pack_base64(salt, iv, encrypted, auth_tag)
         except Exception as e:
             raise InCryptoException(e) from e
 
@@ -99,6 +125,15 @@ class InCrypto:
 
     def decrypt_v1(self, packed_enc):
         [salt, iv, enc, auth_tag] = self.unpack_hex(packed_enc)
+        key = self.get_key(salt)
+
+        decryptor = Cipher(
+            algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()
+        ).decryptor()
+        return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
+
+    def decrypt_v2(self, packed_enc):
+        [salt, iv, enc, auth_tag] = self.unpack_base64(packed_enc)
         key = self.get_key(salt)
 
         decryptor = Cipher(
