@@ -4,10 +4,7 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
-
-class InCryptoException(Exception):
-    pass
-
+from .exceptions import InCryptoException
 
 class InCrypto:
     SALT_LENGTH = 64  # Bytes
@@ -39,8 +36,8 @@ class InCrypto:
             b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
-    def __init__(self, password):
-        self.password = password
+    def __init__(self, secret_key_accessor):
+        self.secret_key_accessor = secret_key_accessor
 
     def __get_decryptor(self, version):
         if version == "0":
@@ -53,7 +50,7 @@ class InCrypto:
     def encrypt(self, raw):
         salt = os.urandom(InCrypto.SALT_LENGTH)
         iv = os.urandom(InCrypto.IV_LENGTH)
-        key = self.get_key(self.password, salt)
+        key = self.get_key(salt)
 
         encryptor = Cipher(
             algorithms.AES(key), modes.GCM(iv), backend=default_backend()
@@ -85,8 +82,9 @@ class InCrypto:
             raise InCryptoException(e) from e
 
     def decrypt_v0(self, enc):
-        ba = hashlib.sha256(self.password.encode("utf-8")).hexdigest()
-        salt = bytes.fromhex(ba)
+        secret = self.secret_key_accessor.get_secret()
+        secret_bytes = hashlib.sha256(secret.encode("utf-8")).hexdigest()
+        salt = bytes.fromhex(secret_bytes)
         key = salt[0:16]
         iv = salt[16:32]
 
@@ -101,17 +99,18 @@ class InCrypto:
 
     def decrypt_v1(self, packed_enc):
         [salt, iv, enc, auth_tag] = self.unpack_hex(packed_enc)
-        key = self.get_key(self.password, salt)
+        key = self.get_key(salt)
 
         decryptor = Cipher(
             algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()
         ).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
-    def get_key(self, password, salt):
+    def get_key(self, salt):
+        secret = self.secret_key_accessor.get_secret()
         return hashlib.pbkdf2_hmac(
             InCrypto.PBKDF2_DIGEST,
-            password.encode("utf8"),
+            secret.encode("utf8"),
             salt,
             InCrypto.PBKDF2_ROUNDS,
             InCrypto.DERIVED_KEY_LENGTH,

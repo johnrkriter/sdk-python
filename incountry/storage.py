@@ -5,18 +5,8 @@ import requests
 import json
 
 from .incountry_crypto import InCrypto
-
-
-class StorageError(Exception):
-    pass
-
-
-class StorageClientError(StorageError):
-    pass
-
-
-class StorageServerError(StorageError):
-    pass
+from .secret_key_accessor import SecretKeyAccessor
+from .exceptions import StorageClientError, StorageServerError
 
 
 class Storage(object):
@@ -34,7 +24,7 @@ class Storage(object):
         api_key=None,
         endpoint=None,
         encrypt=True,
-        secret_key=None,
+        secret_key_accessor=None,
         debug=False,
     ):
         """
@@ -50,7 +40,7 @@ class Storage(object):
         @param api_key: Your API key
         @param endpoint: Optional. Will use DNS routing by default.
         @param encrypt: Pass True (default) to encrypt values before storing
-        @param secret_key: pass the encryption key for AES encrypting fields
+        @param secret_key_accessor: pass SecretKeyAccessor class instance which provides secret key for encrytion
         @param debug: pass True to enable some debug logging
         @param use_ssl: Pass False to talk to an unencrypted endpoint
 
@@ -59,7 +49,6 @@ class Storage(object):
         INC_ENVIRONMENT_ID
         INC_API_KEY
         INC_ENDPOINT
-        INC_SECRET_KEY
         """
         self.debug = debug
 
@@ -79,12 +68,9 @@ class Storage(object):
 
         self.encrypt = encrypt
         if encrypt:
-            self.secret_key = secret_key or os.environ.get("INC_SECRET_KEY")
-            if not self.secret_key:
-                raise ValueError(
-                    "Encryption is on. Please pass secret_key param or set INC_SECRET_KEY env var"
-                )
-            self.crypto = InCrypto(self.secret_key)
+            if not isinstance(secret_key_accessor, SecretKeyAccessor):
+                raise ValueError("Encryption is on. Provide secret_key_accessor parameter of class SecretKeyAccessor")
+            self.crypto = InCrypto(secret_key_accessor)
 
     def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()

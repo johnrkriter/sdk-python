@@ -2,7 +2,8 @@ import os
 import pytest
 import sure
 
-from incountry import InCrypto, InCryptoException
+
+from incountry import InCrypto, InCryptoException, SecretKeyAccessor
 
 PLAINTEXTS = [
     "",
@@ -60,7 +61,8 @@ def test_unpack_error():
 @pytest.mark.parametrize("password", ["password"])
 @pytest.mark.happy_path
 def test_enc_dec(plaintext, password):
-    cipher = InCrypto(password)
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
 
     enc = cipher.encrypt(plaintext)
     dec = cipher.decrypt(enc)
@@ -74,7 +76,8 @@ def test_enc_dec(plaintext, password):
 )
 @pytest.mark.happy_path
 def test_dec(ciphertext, plaintext, password):
-    cipher = InCrypto(password)
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
 
     dec = cipher.decrypt(ciphertext)
 
@@ -92,8 +95,10 @@ def test_hash():
 @pytest.mark.parametrize("password", ["password"])
 @pytest.mark.error_path
 def test_enc_dec_v1_wrong_password(plaintext, password):
-    cipher = InCrypto(password)
-    cipher2 = InCrypto(password + "1")
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    secret_accessor2 = SecretKeyAccessor(lambda: password + "1")
+    cipher = InCrypto(secret_accessor)
+    cipher2 = InCrypto(secret_accessor2)
 
     enc = cipher.encrypt(plaintext)
 
@@ -103,7 +108,8 @@ def test_enc_dec_v1_wrong_password(plaintext, password):
 @pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["0"])
 @pytest.mark.error_path
 def test_dec_v0_wrong_padding(ciphertext, plaintext, password):
-    cipher = InCrypto(password)
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
 
     cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
 
@@ -111,7 +117,8 @@ def test_dec_v0_wrong_padding(ciphertext, plaintext, password):
 @pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["1"])
 @pytest.mark.error_path
 def test_dec_v1_wrong_auth_tag(ciphertext, plaintext, password):
-    cipher = InCrypto(password)
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
 
     cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
 
@@ -119,11 +126,12 @@ def test_dec_v1_wrong_auth_tag(ciphertext, plaintext, password):
 @pytest.mark.parametrize("ciphertext", ["unsupported_version:abc", "some:unsupported:data"])
 @pytest.mark.error_path
 def test_wrong_ciphertext(ciphertext):
-    cipher = InCrypto("password")
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+    cipher = InCrypto(secret_accessor)
 
     cipher.decrypt.when.called_with(ciphertext).should.have.raised(InCryptoException)
 
 
 @pytest.mark.error_path
-def test_no_password():
+def test_no_secret_key_accessor():
     InCrypto.when.called_with().should.have.raised(TypeError)
