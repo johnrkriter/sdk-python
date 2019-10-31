@@ -21,7 +21,7 @@ URL = "https://github.com/incountry/incountry-sdks"
 EMAIL = "developers@incountry.com"
 AUTHOR = "InCountry"
 REQUIRES_PYTHON = ">=3.6.0"
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 # What packages are required for this module to be executed?
 REQUIRED = ["requests", "pycryptodome"]
@@ -87,7 +87,7 @@ class UploadCommand(Command):
         os.system("twine upload dist/*")
 
         self.status("Pushing git tags…")
-        os.system("git tag v{0}".format(quote(about['__version__'])))
+        os.system("git tag v{0}".format(quote(about["__version__"])))
         os.system("git push --tags")
 
         sys.exit()
