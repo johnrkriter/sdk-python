@@ -32,11 +32,11 @@ class InCrypto:
             raise InCryptoException("Wrong ciphertext size")
         return [
             b_data[: InCrypto.SALT_LENGTH],
-            b_data[InCrypto.SALT_LENGTH: InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
+            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
             b_data[
-            InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH: len(b_data) - InCrypto.AUTH_TAG_LENGTH
+                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
             ],
-            b_data[-InCrypto.AUTH_TAG_LENGTH:],
+            b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
     def __init__(self, secret_key_accessor):
@@ -111,11 +111,11 @@ class InCrypto:
 
         [salt, iv, enc, auth_tag] = [
             b_data[: InCrypto.SALT_LENGTH],
-            b_data[InCrypto.SALT_LENGTH: InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
+            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
             b_data[
-            InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH: len(b_data) - InCrypto.AUTH_TAG_LENGTH
+                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
             ],
-            b_data[-InCrypto.AUTH_TAG_LENGTH:],
+            b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
         key = self.get_key(salt)
