@@ -19,30 +19,10 @@ class InCrypto:
     ENC_VERSION = "2"
 
     @staticmethod
-    def pack_hex(salt, iv, enc, auth_tag):
-        parts = [salt, iv, enc, auth_tag]
-        return "".join([x.hex() for x in parts])
-
-    @staticmethod
     def pack_base64(salt, iv, enc, auth_tag):
         parts = [salt, iv, enc, auth_tag]
         joined_parts = b"".join(parts)
         return base64.b64encode(joined_parts).decode("utf8")
-
-    @staticmethod
-    def unpack_hex(enc):
-        b_data = bytes.fromhex(enc)
-        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
-        if len(b_data) < min_len:
-            raise InCryptoException("Wrong ciphertext size")
-        return [
-            b_data[: InCrypto.SALT_LENGTH],
-            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
-            b_data[
-                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
-            ],
-            b_data[-InCrypto.AUTH_TAG_LENGTH :],
-        ]
 
     @staticmethod
     def unpack_base64(enc):
@@ -58,7 +38,6 @@ class InCrypto:
             ],
             b_data[-InCrypto.AUTH_TAG_LENGTH:],
         ]
-
 
     def __init__(self, secret_key_accessor):
         self.secret_key_accessor = secret_key_accessor
@@ -124,7 +103,21 @@ class InCrypto:
         return unpad(decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def decrypt_v1(self, packed_enc):
-        [salt, iv, enc, auth_tag] = self.unpack_hex(packed_enc)
+        b_data = bytes.fromhex(packed_enc)
+        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
+
+        if len(b_data) < min_len:
+            raise InCryptoException("Wrong ciphertext size")
+
+        [salt, iv, enc, auth_tag] = [
+            b_data[: InCrypto.SALT_LENGTH],
+            b_data[InCrypto.SALT_LENGTH: InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
+            b_data[
+            InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH: len(b_data) - InCrypto.AUTH_TAG_LENGTH
+            ],
+            b_data[-InCrypto.AUTH_TAG_LENGTH:],
+        ]
+
         key = self.get_key(salt)
 
         decryptor = Cipher(

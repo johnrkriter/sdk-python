@@ -32,8 +32,8 @@ PREPARED_DATA_BY_VERSION = {
     "2": [
         (
             (
-                "2:4Z1tUJsbUnuur37MSJNUBRbsk+68hyG59NaKKzd9yXX8qdgJMVVR9sOj9UVkQKR+x8QQJqNJKtkjFk/a3rHl"
-                "RZj1+Jfjc7J31ge2mdxbsle+TGU8ooT+gyFKY94zAq11et++y14="
+                "2:MyAeMDU3wnlWiqooUM4aStpDvW7JKU0oKBQN4WI0Wyl2vSuSmTIu8TY7Z9ljYeaLfg8ti3mhIJhbLS"
+                "BNu/AmvMPBZsl6CmSC1KcbZ4kATJQtmZolidyXUGBlXC52xvAnFFGnk2s="
             ),
             "InCountry",
             "password",
