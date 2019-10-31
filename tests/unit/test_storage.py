@@ -1,11 +1,11 @@
 import pytest
-import incountry
+from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor
 import uuid
 import json
 import sure
 import httpretty
 
-POPAPI_URL = "https://popapi.com"
+POPAPI_URL = "https://popapi.com:8082"
 COUNTRY = "us"
 SECRET_KEY = "password"
 
@@ -35,7 +35,7 @@ TEST_RECORDS = [
 def mock_backend():
     httpretty.register_uri(
         httpretty.GET,
-        incountry.Storage.PORTALBACKEND_URI + "/countries",
+        Storage.PORTALBACKEND_URI + "/countries",
         body=json.dumps(
             {"countries": [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]}
         ),
@@ -45,13 +45,14 @@ def mock_backend():
 @pytest.fixture()
 def client():
     def cli(encrypt=True, endpoint=POPAPI_URL):
-        return incountry.Storage(
+        secret_accessor = SecretKeyAccessor(lambda: SECRET_KEY)
+        return Storage(
             encrypt=encrypt,
             debug=True,
             environment_id="test",
             api_key="test",
             endpoint=endpoint,
-            secret_key=SECRET_KEY,
+            secret_key_accessor=secret_accessor,
         )
 
     return cli
@@ -62,6 +63,8 @@ def client():
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_write(client, record, encrypt):
+    print(POPAPI_URL + "/v2/storage/records/" + COUNTRY)
+    mock_backend()
     httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
 
     client(encrypt).write(country=COUNTRY, **record)
@@ -215,7 +218,7 @@ def test_find(client, query, records, encrypt):
     received_record.should.have.key("options")
     received_record["options"].should.equal(
         {
-            "limit": query.get("limit", incountry.Storage.FIND_LIMIT),
+            "limit": query.get("limit", Storage.FIND_LIMIT),
             "offset": query.get("offset", 0),
         }
     )
@@ -339,12 +342,12 @@ def test_default_endpoint(client, record, country, countries):
     midpop_ids = [c["id"].lower() for c in countries if c["direct"]]
     is_midpop = country in midpop_ids
     endpoint = (
-        incountry.Storage.get_midpop_url(country)
+        Storage.get_midpop_url(country)
         if is_midpop
-        else incountry.Storage.DEFAULT_ENDPOINT
+        else Storage.DEFAULT_ENDPOINT
     )
 
-    countries_url = incountry.Storage.PORTALBACKEND_URI + "/countries"
+    countries_url = Storage.PORTALBACKEND_URI + "/countries"
     httpretty.register_uri(httpretty.GET, countries_url, body=json.dumps({"countries": countries}))
 
     read_url = endpoint + "/v2/storage/records/" + country + "/" + record["key"]
@@ -405,7 +408,7 @@ def test_find_error(client, query):
     )
 
     client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
-        incountry.StorageClientError
+        StorageClientError
     )
 
 
@@ -426,7 +429,7 @@ def test_update_error(client, records, encrypt):
 
     client(encrypt).update_one.when.called_with(
         country=COUNTRY, filters={"key": "key1"}, **{"key2": "key2"}
-    ).should.have.raised(incountry.StorageServerError)
+    ).should.have.raised(StorageServerError)
 
 
 @pytest.mark.parametrize(
@@ -441,7 +444,7 @@ def test_update_error(client, records, encrypt):
 )
 @pytest.mark.error_path
 def test_init_error_on_insufficient_args(client, kwargs):
-    incountry.Storage.when.called_with(**kwargs).should.have.raised(Exception)
+    Storage.when.called_with(**kwargs).should.have.raised(Exception)
 
 
 @httpretty.activate
@@ -472,19 +475,19 @@ def test_error_on_popapi_error(client, record, encrypt):
     )
 
     client(encrypt).write.when.called_with(country=COUNTRY, **record).should.have.raised(
-        incountry.StorageServerError
+        StorageServerError
     )
     client(encrypt).read.when.called_with(country=COUNTRY, **record).should.have.raised(
-        incountry.StorageServerError
+        StorageServerError
     )
     client(encrypt).delete.when.called_with(country=COUNTRY, **record).should.have.raised(
-        incountry.StorageServerError
+        StorageServerError
     )
     client(encrypt).find.when.called_with(country=COUNTRY, **record).should.have.raised(
-        incountry.StorageServerError
+        StorageServerError
     )
     client(encrypt).find_one.when.called_with(country=COUNTRY, **record).should.have.raised(
-        incountry.StorageServerError
+        StorageServerError
     )
 
 
