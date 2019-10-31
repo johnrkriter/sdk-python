@@ -56,15 +56,15 @@ def test_pack_unpack():
     auth_tag = os.urandom(InCrypto.AUTH_TAG_LENGTH)
 
     parts = [salt, iv, data, auth_tag]
-    packed = InCrypto.pack_hex(salt, iv, data, auth_tag)
-    unpacked = InCrypto.unpack_hex(packed)
+    packed = InCrypto.pack_base64(salt, iv, data, auth_tag)
+    unpacked = InCrypto.unpack_base64(packed)
 
     assert all([a == b for a, b in zip(parts, unpacked)])
 
 
 @pytest.mark.happy_path
 def test_unpack_error():
-    InCrypto.unpack_hex.when.called_with("").should.have.raised(InCryptoException)
+    InCrypto.unpack_base64.when.called_with("").should.have.raised(InCryptoException)
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
