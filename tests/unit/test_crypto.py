@@ -133,6 +133,15 @@ def test_dec_v1_wrong_auth_tag(ciphertext, plaintext, password):
     cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
 
 
+@pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["2"])
+@pytest.mark.error_path
+def test_dec_v2_wrong_auth_tag(ciphertext, plaintext, password):
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
+
+    cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
+
+
 @pytest.mark.parametrize("ciphertext", ["unsupported_version:abc", "some:unsupported:data"])
 @pytest.mark.error_path
 def test_wrong_ciphertext(ciphertext):
