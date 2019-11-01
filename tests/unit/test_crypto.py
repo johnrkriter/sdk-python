@@ -29,6 +29,16 @@ PREPARED_DATA_BY_VERSION = {
             "password",
         )
     ],
+    "2": [
+        (
+            (
+                "2:MyAeMDU3wnlWiqooUM4aStpDvW7JKU0oKBQN4WI0Wyl2vSuSmTIu8TY7Z9ljYeaLfg8ti3mhIJhbLS"
+                "BNu/AmvMPBZsl6CmSC1KcbZ4kATJQtmZolidyXUGBlXC52xvAnFFGnk2s="
+            ),
+            "InCountry",
+            "password",
+        )
+    ],
 }
 
 PREPARED_HASH = {
@@ -46,15 +56,15 @@ def test_pack_unpack():
     auth_tag = os.urandom(InCrypto.AUTH_TAG_LENGTH)
 
     parts = [salt, iv, data, auth_tag]
-    packed = InCrypto.pack_hex(salt, iv, data, auth_tag)
-    unpacked = InCrypto.unpack_hex(packed)
+    packed = InCrypto.pack_base64(salt, iv, data, auth_tag)
+    unpacked = InCrypto.unpack_base64(packed)
 
     assert all([a == b for a, b in zip(parts, unpacked)])
 
 
 @pytest.mark.happy_path
 def test_unpack_error():
-    InCrypto.unpack_hex.when.called_with("").should.have.raised(InCryptoException)
+    InCrypto.unpack_base64.when.called_with("").should.have.raised(InCryptoException)
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
@@ -117,6 +127,15 @@ def test_dec_v0_wrong_padding(ciphertext, plaintext, password):
 @pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["1"])
 @pytest.mark.error_path
 def test_dec_v1_wrong_auth_tag(ciphertext, plaintext, password):
+    secret_accessor = SecretKeyAccessor(lambda: password)
+    cipher = InCrypto(secret_accessor)
+
+    cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
+
+
+@pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["2"])
+@pytest.mark.error_path
+def test_dec_v2_wrong_auth_tag(ciphertext, plaintext, password):
     secret_accessor = SecretKeyAccessor(lambda: password)
     cipher = InCrypto(secret_accessor)
 
