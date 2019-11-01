@@ -22,7 +22,7 @@ cryptography = "*"
 python_version = "3.7"
 
 [scripts]
-test = "pytest --ignore=tests/integration --cov=incountry --cov-report term-missing -v"
+tests = "pytest --ignore=tests/integration --cov=incountry --cov-report term-missing -v"
 integrations = "pytest --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report term-missing -v"
 
 [pipenv]
