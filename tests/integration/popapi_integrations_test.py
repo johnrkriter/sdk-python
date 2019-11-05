@@ -1,6 +1,9 @@
 import pytest
 from incountry import Storage
+from pytest_testrail.plugin import pytestrail
 
+
+@pytestrail.case('С149')
 def test_e2e():
     client = Storage(encrypt=True, secret_key='supersecret', debug=True)
 

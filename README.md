@@ -66,6 +66,13 @@ Testing Locally
 
 In terminal run `pytest` for unit and integration tests
 
+
+Testrail Reports
+---------------
+
+pytest --testrail --tr-url=https://incountry.testrail.io/ --tr-email={username} --tr-password={password} --tr-testrun-project-id=5 {TR Project ID 5 = Python SDK}
+
+
 Notes
 -----
 1. To use with pipenv, please run `pipenv install`

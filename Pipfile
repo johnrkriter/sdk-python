@@ -17,6 +17,7 @@ setuptools = "*"
 wheel = "*"
 twine = "*"
 cryptography = "*"
+pytest_testrail = "*"
 
 [requires]
 python_version = "3.7"
