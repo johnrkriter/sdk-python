@@ -19,12 +19,12 @@ To access your data in InCountry using Python SDK, you need to create an instanc
 from incountry import Storage
 
 storage = Storage(
-    api_key="string",              // Required to be passed in, or as environment variable INC_API_KEY
-    environment_id="string",       // Required to be passed in, or as environment variable INC_ENVIRONMENT_ID
-    endpoint="string",             // Optional. Defines API URL
-    encrypt=bool,                  // Optional. If False, encryption is not used
-    debug=bool,                    // Optional. If True enables some debug logging
-    secret_key_accessor=accessor,  // Instance of SecretKeyAccessor class. Used to fetch encryption secret
+    api_key="string",              # Required to be passed in, or as environment variable INC_API_KEY
+    environment_id="string",       # Required to be passed in, or as environment variable INC_ENVIRONMENT_ID
+    endpoint="string",             # Optional. Defines API URL
+    encrypt=bool,                  # Optional. If False, encryption is not used
+    debug=bool,                    # Optional. If True enables some debug logging
+    secret_key_accessor=accessor,  # Instance of SecretKeyAccessor class. Used to fetch encryption secret
 )
 ```
 `api_key` and `environment_id` can be fetched from your dashboard on `Incountry` site.
@@ -41,20 +41,20 @@ Note: even though PBKDF2 is used internally to generate a cryptographically stro
 
 Here are some examples how you can use `SecretKeyAccessor`.
 ```
-// Get secret from variable
+# Get secret from variable
 from incountry import SecretKeyAccessor
 
 password = "password"
 secret_key_accessor = SecretKeyAccessor(lambda: password)
 
-// Get secret via http request
+# Get secret via http request
 from incountry import SecretKeyAccessor
 import requests as req
 
 def get_secret():
     url = "<your_secret_url>"
     r = req.get(url)
-    return r.json().get("secret") // assuming response is {"secret": "password"}
+    return r.json().get("secret") # assuming response is {"secret": "password"}
 
 secret_key_accessor = SecretKeyAccessor(get_secret)
 ```
@@ -64,28 +64,28 @@ secret_key_accessor = SecretKeyAccessor(get_secret)
 Use `write` method in order to create a record.
 ```
 record = storage.write(
-	country="string",      // Required country code of where to store the data
-	key="string",          // Required record key
-	body="string",         // Optional payload
-	profile_key="string",  // Optional
-	range_key=integer,     // Optional
-	key2="string",         // Optional
-	key3="string"          // Optional
+	country="string",      # Required country code of where to store the data
+	key="string",          # Required record key
+	body="string",         # Optional payload
+	profile_key="string",  # Optional
+	range_key=integer,     # Optional
+	key2="string",         # Optional
+	key3="string"          # Optional
 )
 
-// `write` returns created record on success
+# `write` returns created record on success
 ```
 #### Encryption
 InCountry uses client-side encryption for your data. Note that only body is encrypted. Some of other fields are hashed.
 Here is how data is transformed and stored in InCountry database:
 ```
 {
-	key, 		// hashed
-	body, 		// encrypted
-	profile_key,// hashed
-	range_key, 	// plain
-	key2, 		// hashed
-	key3 		// hashed
+	key, 		# hashed
+	body, 		# encrypted
+	profile_key,# hashed
+	range_key, 	# plain
+	key2, 		# hashed
+	key3 		# hashed
  }
 ```
 ### Reading stored data
@@ -93,8 +93,8 @@ Here is how data is transformed and stored in InCountry database:
 Stored record can be read by `key` using `readAsync` method. It accepts an object with two fields: `country` and `key`
 ```
 record = storage.read(
-	country="string",      // Required country code
-	key="string"           // Required record key
+	country="string",      # Required country code
+	key="string"           # Required record key
 )
 ```
 
@@ -114,7 +114,7 @@ Here is the example of how `find` method can be used:
 ```
 records = storage.find(country="us", limit=10, offset=10, key2="kitty", key3=["mew", "purr"])
 ```
-This call returns all records with `key2` equals `kitty` AND `key3` equals `mew` OR `purr`. The `options` parameter defines the number of records to return and the starting index. It is useful to implement pagination. Note: SDK returns 100 records at most.
+This call returns all records with `key2` equals `kitty` AND `key3` equals `mew` OR `purr`. The `options` parameter defines the number of records to return and the starting index. It can be used for pagination. Note: SDK returns 100 records at most.
 
 The return object looks like the following:
 ```
@@ -123,7 +123,7 @@ The return object looks like the following:
 	"meta": {
 		"limit": 10,
 		"offset": 10,
-		"total": 124     // total records matching filter, ignoring limit
+		"total": 124     # total records matching filter, ignoring limit
 	}
 }
 ```
@@ -138,7 +138,7 @@ key3=["mew", "purr"]
 ```
 `range_key` is a numeric field so you can use range filter requests, for example:
 ```
-range_key={ "$lt": 1000 } // search for records with range_key < 1000
+range_key={ "$lt": 1000 } # search for records with range_key < 1000
 ```
 Available request options for `range_key`: `$lt`, `$lte`, `$gt`, `$gte`.
 
@@ -156,11 +156,11 @@ If record is not found, it will return `None`.
 Use `deleteAsync` method in order to delete a record from InCountry storage. It is only possible using `key` field.
 ```
 storage.delete(
-	country="string",      // Required country code
-	key="string"           // Required record key
+	country="string",      # Required country code
+	key="string"           # Required record key
 )
 
-// delete will raise an Exception if fails
+# delete will raise an Exception if fails
 ```
 
 Testing Locally
