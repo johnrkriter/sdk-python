@@ -42,7 +42,6 @@ class Storage(object):
         @param encrypt: Pass True (default) to encrypt values before storing
         @param secret_key_accessor: pass SecretKeyAccessor class instance which provides secret key for encrytion
         @param debug: pass True to enable some debug logging
-        @param use_ssl: Pass False to talk to an unencrypted endpoint
 
         You can set parameters via env vars also:
 
