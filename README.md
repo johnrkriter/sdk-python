@@ -83,7 +83,7 @@ Here is how data is transformed and stored in InCountry database:
 	key,          # hashed
 	body,         # encrypted
 	profile_key,  # hashed
-	range_key, 	  # plain
+	range_key,    # plain
 	key2,         # hashed
 	key3          # hashed
  }
