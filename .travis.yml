@@ -9,7 +9,8 @@ node_js:
   - 11
 
 install:
-  - pip3 install bandit
+  - sudo apt-get -y install jq
+  - pip3 install bandit cyclonedx-bom
   - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then npm install -g snyk; fi
   - pipenv sync
 
@@ -17,3 +18,11 @@ script:
   - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then snyk monitor --org=incountry; fi
   - bandit --ini bandit.ini -r -o bandit.json -f json || true
   - sonar-scanner
+  - ./dependencytrack_upload.sh $DEPTRACK_API $DEPTRACK_URL $DEPTRACK_PROJECT $TRAVIS_BRANCH
+
+env:
+  global:
+    - DEPTRACK_URL='https://dependency.tools.incountry.com'
+    - DEPTRACK_PROJECT="sdk-python"
+# DEPTRACK_API
+    - secure: "jzdMTegdxNXvouuj6wdmZ/CADRnXpxVh1ufA+VTum5LeKsKRx0Jw0u3/sL2yicRFfcqrNW+E0uJQZKZl2iVMoyLtggJj9FOSrDsfDIXFxT/IrEKJWluIE5gx/WpcfDrjcYVOXt+FX2e9tcUmnd/9KHTEP3dQ6Xd1/22Le6UaO6eP0mS1MtC+qSRm8f2VM2EfIM8gS8qPnJFRcM3EYYjOflJppfcs1fTQjhO1OQsPxedcgclAdF+SiZkFaGXYd2nOhZCAuiSRnSqQpPK+KYtl2mBaAx5QIslKowHKJJQN99FOL4AYw4L7DJZTpIq6wB3yZjibu98WMxqrgU/VII2+h1TczckWSkrnebdaF89SMLTnF4aj27RuEjiH4hDWZq+6mhNYY1Glo58RX5hW9LCQQugCk9SBGmV24r4CwdYF777niKHrvE1oY1l+msIz1ZpUJgv+C7/HlCWt97n73O+1za8hhHeUnfXVQtqqqDl2ItXqwo3em4lDW8YY7Od1QJKb8TAeLV5M+Ar3GVTdoEgb64sY31LYpvSozrF7Z7Gf2jRezE083iVZsbML6rR8Fxa//xlO/E16/5TVZ5sOIQrzIg60frouJJR6unZFvsX6n0btceQywpV9ChaRKfgKd1LV9dNRIwKDJfXcZZHHV23D6Q06cGJHYhexW1GdYY5EaHw="
