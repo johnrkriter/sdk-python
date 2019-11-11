@@ -24,7 +24,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 VERSION = "0.5.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["requests", "pycryptodome"]
+REQUIRED = ["requests", "cryptography"]
 
 # What packages are optional?
 EXTRAS = {
