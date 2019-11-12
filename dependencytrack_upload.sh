@@ -3,13 +3,15 @@
 # common variables
 API_KEY=$1
 API_URL=$2
-VERSION=$4
+VERSION=`cat sonar-project.properties | grep -Po '(?<=sonar.projectVersion=).*'`
 PROJECT_NAME=$3
 PROJECT_ID=`curl -s -X "GET" "${API_URL}/api/v1/project" \
      -H 'Content-Type: application/json' \
      -H "X-API-Key: ${API_KEY}" | jq -j ".[]?
                   | select(.version == \"${VERSION}\" and .name == \"${PROJECT_NAME}\")
                   | .uuid"`
+
+[ -z "${VERSION}" ] && VERSION="1.0.0"
 
 echo "Uploading BOM for project ${PROJECT_NAME} version ${VERSION}"
 
