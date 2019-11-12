@@ -18,7 +18,7 @@ script:
   - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then snyk monitor --org=incountry; fi
   - bandit --ini bandit.ini -r -o bandit.json -f json || true
   - sonar-scanner
-  - if [[ $TRAVIS_BRANCH =~ ^master|^RC_.*|^SB_.*|DEVOPS-718.* ]]; then ./dependencytrack_upload.sh $DEPTRACK_API $DEPTRACK_URL $DEPTRACK_PROJECT-$TRAVIS_BRANCH; fi
+  - if [[ $TRAVIS_BRANCH =~ ^master|^RC_.*|^SB_.* ]]; then ./dependencytrack_upload.sh $DEPTRACK_API $DEPTRACK_URL $DEPTRACK_PROJECT-$TRAVIS_BRANCH; fi
 
 env:
   global:
