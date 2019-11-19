@@ -76,6 +76,6 @@ def test_non_existing_version_requested(keys_data):
 @pytest.mark.error_path
 def test_invalid_keys_object(keys_data):
     secret_accessor = SecretKeyAccessor(lambda: keys_data)
-    secret_accessor.get_key.when.called_with(key_version=0).should.have.raised(
+    secret_accessor.get_key.when.called_with().should.have.raised(
         SecretKeyAccessorException
     )
