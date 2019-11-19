@@ -23,7 +23,7 @@ class SecretKeyAccessor:
         keys_data = self._accessor_function()
 
         if isinstance(keys_data, str):
-            return [keys_data, SecretKeyAccessor.DEFAULT_VERSION]
+            return (keys_data, SecretKeyAccessor.DEFAULT_VERSION)
 
         try:
             validate(instance=keys_data, schema=secret_key_accessor_response_schema)
@@ -36,7 +36,7 @@ class SecretKeyAccessor:
 
         for key_data in keys_data.get("keys"):
             if key_data.get("keyVersion") == version_to_search:
-                return [key_data.get("key"), version_to_search]
+                return (key_data.get("key"), version_to_search)
 
         raise SecretKeyAccessorException(
             "Secret key not found for version {}".format(version_to_search)
