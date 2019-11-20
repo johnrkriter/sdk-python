@@ -85,11 +85,11 @@ def test_write(client, record, encrypt):
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.parametrize("keys_data", [{
-    "currentKeyVersion": 1,
-    "keys": [
+    "currentVersion": 1,
+    "secrets": [
         {
-            "key": SECRET_KEY,
-            "keyVersion": 1
+            "secret": SECRET_KEY,
+            "version": 1
         }
     ]
 }])
@@ -105,7 +105,7 @@ def test_write_with_keys_data(client, record, encrypt, keys_data):
     received_record = json.loads(httpretty.last_request().body)
 
     if encrypt:
-        assert received_record.get("version") == keys_data.get("currentKeyVersion")
+        assert received_record.get("version") == keys_data.get("currentVersion")
 
     if record.get("range_key", None):
         assert received_record["range_key"] == record["range_key"]
@@ -158,24 +158,24 @@ def test_read(client, record, encrypt):
 }])
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.parametrize("keys_data_old", [{
-    "currentKeyVersion": 0,
-    "keys": [
+    "currentVersion": 0,
+    "secrets": [
         {
-            "key": SECRET_KEY,
-            "keyVersion": 0
+            "secret": SECRET_KEY,
+            "version": 0
         }
     ]
 }])
 @pytest.mark.parametrize("keys_data_new", [{
-    "currentKeyVersion": 1,
-    "keys": [
+    "currentVersion": 1,
+    "secrets": [
         {
-            "key": SECRET_KEY,
-            "keyVersion": 0
+            "secret": SECRET_KEY,
+            "version": 0
         },
         {
-            "key": SECRET_KEY + "1",
-            "keyVersion": 1
+            "secret": SECRET_KEY + "1",
+            "version": 1
         }
     ]
 }])
@@ -211,8 +211,8 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
     record_2_response = client_new.read(country=COUNTRY, key=record_2["key"])
 
     if encrypt:
-        assert record_1_response.get("version") == keys_data_old.get("currentKeyVersion")
-        assert record_2_response.get("version") == keys_data_new.get("currentKeyVersion")
+        assert record_1_response.get("version") == keys_data_old.get("currentVersion")
+        assert record_2_response.get("version") == keys_data_new.get("currentVersion")
 
     for k in ["body", "key", "key2", "key3", "profile_key", "range_key"]:
         if record_1.get(k, None):

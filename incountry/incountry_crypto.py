@@ -90,7 +90,7 @@ class InCrypto:
             raise InCryptoException(e) from e
 
     def decrypt_v0(self, enc, key_version):
-        [secret, *rest] = self.secret_key_accessor.get_key(key_version=key_version)
+        [secret, *rest] = self.secret_key_accessor.get_secret(version=key_version)
         secret_bytes = hashlib.sha256(secret.encode("utf-8")).hexdigest()
         salt = bytes.fromhex(secret_bytes)
         key = salt[0:16]
@@ -138,7 +138,7 @@ class InCrypto:
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def get_key(self, salt, key_version=None):
-        [secret, version] = self.secret_key_accessor.get_key(key_version=key_version)
+        [secret, version] = self.secret_key_accessor.get_secret(version=key_version)
         return [
             hashlib.pbkdf2_hmac(
                 InCrypto.PBKDF2_DIGEST,
