@@ -213,13 +213,15 @@ class Storage(object):
         if res.get("body"):
             body["payload"] = res.get("body")
 
-        res["body"] = self.crypto.encrypt(json.dumps(body))
+        [enc_data, key_version] = self.crypto.encrypt(json.dumps(body))
+        res["body"] = enc_data
+        res["version"] = key_version
         return res
 
     def decrypt_record(self, record):
         res = dict(record)
         if res.get("body"):
-            res["body"] = self.crypto.decrypt(res["body"])
+            res["body"] = self.crypto.decrypt(res["body"], res["version"])
             if self.is_json(res["body"]):
                 body = json.loads(res["body"])
                 if body.get("payload"):

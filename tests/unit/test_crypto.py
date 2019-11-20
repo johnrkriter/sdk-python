@@ -74,7 +74,7 @@ def test_enc_dec(plaintext, password):
     secret_accessor = SecretKeyAccessor(lambda: password)
     cipher = InCrypto(secret_accessor)
 
-    enc = cipher.encrypt(plaintext)
+    [enc, *rest] = cipher.encrypt(plaintext)
     dec = cipher.decrypt(enc)
 
     assert plaintext == dec
@@ -110,7 +110,7 @@ def test_enc_dec_v1_wrong_password(plaintext, password):
     cipher = InCrypto(secret_accessor)
     cipher2 = InCrypto(secret_accessor2)
 
-    enc = cipher.encrypt(plaintext)
+    [enc, *rest] = cipher.encrypt(plaintext)
 
     cipher2.decrypt.when.called_with(enc).should.have.raised(InCryptoException)
 
