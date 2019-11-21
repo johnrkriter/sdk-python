@@ -46,7 +46,9 @@ def mock_backend():
 
 @pytest.fixture()
 def client():
-    def cli(encrypt=True, endpoint=POPAPI_URL, secret_accessor=SecretKeyAccessor(lambda: SECRET_KEY)):
+    def cli(
+        encrypt=True, endpoint=POPAPI_URL, secret_accessor=SecretKeyAccessor(lambda: SECRET_KEY)
+    ):
         return Storage(
             encrypt=encrypt,
             debug=True,
@@ -84,15 +86,9 @@ def test_write(client, record, encrypt):
 @httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.parametrize("keys_data", [{
-    "currentVersion": 1,
-    "secrets": [
-        {
-            "secret": SECRET_KEY,
-            "version": 1
-        }
-    ]
-}])
+@pytest.mark.parametrize(
+    "keys_data", [{"currentVersion": 1, "secrets": [{"secret": SECRET_KEY, "version": 1}]}]
+)
 @pytest.mark.happy_path
 def test_write_with_keys_data(client, record, encrypt, keys_data):
     mock_backend()
@@ -115,6 +111,44 @@ def test_write_with_keys_data(client, record, encrypt, keys_data):
             assert received_record[k] != record[k]
         if record.get(k, None) and not encrypt:
             assert received_record[k] == record[k]
+
+
+@httpretty.activate
+@pytest.mark.parametrize("records", [TEST_RECORDS])
+@pytest.mark.parametrize("encrypt", [True, False])
+@pytest.mark.happy_path
+def test_batch_write(client, records, encrypt):
+    mock_backend()
+    httpretty.register_uri(
+        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite"
+    )
+
+    client(encrypt).batch_write(country=COUNTRY, records=records)
+
+    received_records = json.loads(httpretty.last_request().body)
+
+    for received_record in received_records:
+        original_record = next(
+            (
+                item
+                for item in records
+                if (
+                    encrypt
+                    and client(encrypt).hash_custom_key(item.get("key"))
+                    == received_record.get("key")
+                )
+                or (not encrypt and item.get("key") == received_record.get("key"))
+            ),
+            None,
+        )
+        if original_record.get("range_key", None):
+            assert received_record["range_key"] == original_record["range_key"]
+
+        for k in ["body", "key", "key2", "key3", "profile_key"]:
+            if original_record.get(k, None) and encrypt:
+                assert received_record[k] != original_record[k]
+            if original_record.get(k, None) and not encrypt:
+                assert received_record[k] == original_record[k]
 
 
 @httpretty.activate
@@ -614,6 +648,14 @@ def test_error_on_popapi_error(client, record, encrypt):
 @pytest.mark.error_path
 def test_error_write_insufficient_args(client, record):
     client().write.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.parametrize("records", [[], [{}]])
+@pytest.mark.error_path
+def test_error_batch_write_invalid_records(client, records):
+    client().batch_write.when.called_with(country=COUNTRY, records=records).should.have.raised(
+        StorageClientError
+    )
 
 
 @pytest.mark.parametrize("record", [{"country": None, "key": None}])

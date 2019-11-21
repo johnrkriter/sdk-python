@@ -3,10 +3,13 @@ import os
 
 import requests
 import json
+from jsonschema import validate
+from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
+from .validation import batch_records_schema
 
 
 class Storage(object):
@@ -68,7 +71,9 @@ class Storage(object):
         self.encrypt = encrypt
         if encrypt:
             if not isinstance(secret_key_accessor, SecretKeyAccessor):
-                raise ValueError("Encryption is on. Provide secret_key_accessor parameter of class SecretKeyAccessor")
+                raise ValueError(
+                    "Encryption is on. Provide secret_key_accessor parameter of class SecretKeyAccessor"
+                )
             self.crypto = InCrypto(secret_key_accessor)
 
     def write(self, country: str, key: str, **record_kwargs):
@@ -90,6 +95,26 @@ class Storage(object):
         self.raise_if_server_error(r)
 
         return data
+
+    def batch_write(self, country: str, records: list):
+        try:
+            validate(instance=records, schema=batch_records_schema)
+        except ValidationError as e:
+            raise StorageClientError("Invalid records for batch_write") from e
+
+        data_to_send = [
+            self.encrypt_record(record) if self.encrypt else record for record in records
+        ]
+
+        r = requests.post(
+            self.getendpoint(country, "/v2/storage/records/" + country + "/batchWrite"),
+            headers=self.headers(),
+            data=json.dumps(data_to_send),
+        )
+
+        self.raise_if_server_error(r)
+
+        return True
 
     def update_one(self, country: str, filters: dict, **record_kwargs):
         country = country.lower()
