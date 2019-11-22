@@ -212,7 +212,10 @@ class Storage(object):
 
         self.batch_write(country=country, records=find_res.get("data"))
 
-        return find_res["meta"]["total"] - find_res["meta"]["count"]
+        return {
+            "migrated": find_res["meta"]["count"],
+            "total_left": find_res["meta"]["total"] - find_res["meta"]["count"],
+        }
 
     ###########################################
     # Common functions

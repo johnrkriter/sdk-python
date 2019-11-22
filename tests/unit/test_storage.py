@@ -468,11 +468,10 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
         httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite"
     )
 
-    left_to_migrate = client(encrypt=True, secret_accessor=secret_accessor_new).migrate(
-        country=COUNTRY
-    )
+    migrate_res = client(encrypt=True, secret_accessor=secret_accessor_new).migrate(country=COUNTRY)
 
-    assert left_to_migrate == total_stored - len(stored_records)
+    assert migrate_res["total_left"] == total_stored - len(stored_records)
+    assert migrate_res["migrated"] == len(stored_records)
 
     received_records = json.loads(httpretty.last_request().body)
     for received_record in received_records:
