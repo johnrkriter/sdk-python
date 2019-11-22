@@ -476,20 +476,21 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
 
     received_records = json.loads(httpretty.last_request().body)
     for received_record in received_records:
-        original_record = next(
-            (
-                item
-                for item in stored_records
-                if (
-                    client(encrypt=True).hash_custom_key(item.get("key"))
-                    == received_record.get("key")
-                )
-            ),
-            None,
+        original_stored_record = next(
+            (item for item in stored_records if item.get("key") == received_record.get("key")), None
         )
 
-        assert original_record.get("version") != received_record.get("version")
+        assert original_stored_record is not None
+
+        assert original_stored_record.get("version") != received_record.get("version")
         assert received_record.get("version") == keys_data_new.get("currentVersion")
+
+        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
+            if original_stored_record.get(k, None):
+                assert received_record[k] == original_stored_record[k]
+
+        if original_stored_record.get("body", None):
+            assert received_record["body"] != original_stored_record["body"]
 
 
 @httpretty.activate
