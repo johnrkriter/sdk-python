@@ -150,5 +150,9 @@ class InCrypto:
             version,
         ]
 
+    def get_current_secret_version(self):
+        [secret, version] = self.secret_key_accessor.get_secret()
+        return version
+
     def hash(self, data):
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
