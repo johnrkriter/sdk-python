@@ -208,10 +208,12 @@ class Storage(object):
 
         current_secret_version = self.crypto.get_current_secret_version()
 
-        records = self.find(country=country, limit=limit, version={"$not": current_secret_version})
-        records_to_migrate = [self.encrypt_record(record) for record in records.get("data")]
+        find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
+        records_to_migrate = [self.encrypt_record(record) for record in find_res.get("data")]
 
         self.batch_write(country=country, records=records_to_migrate)
+
+        return find_res["meta"]["total"] - find_res["meta"]["count"]
 
     ###########################################
     # Common functions

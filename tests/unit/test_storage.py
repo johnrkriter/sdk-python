@@ -454,20 +454,27 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
         for x in records
     ]
 
+    total_stored = len(stored_records) + 1
+
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(stored_records)}, "data": stored_records}),
+        body=json.dumps(
+            {"meta": {"total": total_stored, "count": len(stored_records)}, "data": stored_records}
+        ),
     )
 
     httpretty.register_uri(
         httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite"
     )
 
-    client(encrypt=True, secret_accessor=secret_accessor_new).migrate(country=COUNTRY)
+    left_to_migrate = client(encrypt=True, secret_accessor=secret_accessor_new).migrate(
+        country=COUNTRY
+    )
+
+    assert left_to_migrate == total_stored - len(stored_records)
 
     received_records = json.loads(httpretty.last_request().body)
-
     for received_record in received_records:
         original_record = next(
             (
