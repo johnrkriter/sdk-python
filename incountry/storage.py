@@ -161,7 +161,7 @@ class Storage(object):
         filter_params = {}
         options = {"limit": limit, "offset": offset}
 
-        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
+        for k in ["version", "key", "key2", "key3", "profile_key", "range_key"]:
             if filter_kwargs.get(k):
                 filter_params[k] = filter_kwargs.get(k)
 
@@ -201,6 +201,21 @@ class Storage(object):
         )
         self.raise_if_server_error(r)
         return r.json()
+
+    def migrate(self, country: str, limit: int = FIND_LIMIT):
+        if not self.encrypt:
+            raise StorageClientError("Migration not supported when encryption is off")
+
+        current_secret_version = self.crypto.get_current_secret_version()
+
+        find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
+
+        self.batch_write(country=country, records=find_res.get("data"))
+
+        return {
+            "migrated": find_res["meta"]["count"],
+            "total_left": find_res["meta"]["total"] - find_res["meta"]["count"],
+        }
 
     ###########################################
     # Common functions

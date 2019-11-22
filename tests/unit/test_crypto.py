@@ -101,6 +101,25 @@ def test_hash():
     assert PREPARED_HASH["hash"] == cipher.hash(PREPARED_HASH["plaintext"])
 
 
+@pytest.mark.happy_path
+@pytest.mark.parametrize(
+    "secret_key_accessor, expected_version",
+    [
+        (SecretKeyAccessor(lambda: "password"), SecretKeyAccessor.DEFAULT_VERSION),
+        (
+            SecretKeyAccessor(
+                lambda: {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}
+            ),
+            1,
+        ),
+    ],
+)
+def test_get_current_version(secret_key_accessor, expected_version):
+    cipher = InCrypto(secret_key_accessor=secret_key_accessor)
+
+    assert cipher.get_current_secret_version() == expected_version
+
+
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
 @pytest.mark.parametrize("password", ["password"])
 @pytest.mark.error_path

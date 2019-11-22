@@ -174,45 +174,48 @@ def test_read(client, record, encrypt):
 
 
 @httpretty.activate
-@pytest.mark.parametrize("record_1", [{
-    "key": str(uuid.uuid1()),
-    "body": "test_1",
-    "key2": "key2_1",
-    "key3": "key3_1",
-    "profile_key": "profile_key_1",
-    "range_key": 1,
-}])
-@pytest.mark.parametrize("record_2", [{
-    "key": str(uuid.uuid1()),
-    "body": "test_2",
-    "key2": "key2_2",
-    "key3": "key3_2",
-    "profile_key": "profile_key_2",
-    "range_key": 2,
-}])
+@pytest.mark.parametrize(
+    "record_1",
+    [
+        {
+            "key": str(uuid.uuid1()),
+            "body": "test_1",
+            "key2": "key2_1",
+            "key3": "key3_1",
+            "profile_key": "profile_key_1",
+            "range_key": 1,
+        }
+    ],
+)
+@pytest.mark.parametrize(
+    "record_2",
+    [
+        {
+            "key": str(uuid.uuid1()),
+            "body": "test_2",
+            "key2": "key2_2",
+            "key3": "key3_2",
+            "profile_key": "profile_key_2",
+            "range_key": 2,
+        }
+    ],
+)
 @pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.parametrize("keys_data_old", [{
-    "currentVersion": 0,
-    "secrets": [
+@pytest.mark.parametrize(
+    "keys_data_old", [{"currentVersion": 0, "secrets": [{"secret": SECRET_KEY, "version": 0}]}]
+)
+@pytest.mark.parametrize(
+    "keys_data_new",
+    [
         {
-            "secret": SECRET_KEY,
-            "version": 0
+            "currentVersion": 1,
+            "secrets": [
+                {"secret": SECRET_KEY, "version": 0},
+                {"secret": SECRET_KEY + "1", "version": 1},
+            ],
         }
-    ]
-}])
-@pytest.mark.parametrize("keys_data_new", [{
-    "currentVersion": 1,
-    "secrets": [
-        {
-            "secret": SECRET_KEY,
-            "version": 0
-        },
-        {
-            "secret": SECRET_KEY + "1",
-            "version": 1
-        }
-    ]
-}])
+    ],
+)
 @pytest.mark.happy_path
 def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, keys_data_new):
     secret_accessor_old = SecretKeyAccessor(lambda: keys_data_old)
@@ -370,10 +373,7 @@ def test_find(client, query, records, encrypt):
     received_record.should.have.key("filter")
     received_record.should.have.key("options")
     received_record["options"].should.equal(
-        {
-            "limit": query.get("limit", Storage.FIND_LIMIT),
-            "offset": query.get("offset", 0),
-        }
+        {"limit": query.get("limit", Storage.FIND_LIMIT), "offset": query.get("offset", 0)}
     )
 
     if query.get("range_key", None):
@@ -425,6 +425,71 @@ def test_find_one(client, query, record, encrypt):
 
     find_one_response = client(encrypt).find_one(country=COUNTRY, **query)
     find_one_response.should.equal(record)
+
+
+@httpretty.activate
+@pytest.mark.parametrize("records", [TEST_RECORDS])
+@pytest.mark.parametrize(
+    "keys_data_old", [{"currentVersion": 0, "secrets": [{"secret": SECRET_KEY, "version": 0}]}]
+)
+@pytest.mark.parametrize(
+    "keys_data_new",
+    [
+        {
+            "currentVersion": 1,
+            "secrets": [
+                {"secret": SECRET_KEY, "version": 0},
+                {"secret": SECRET_KEY + "1", "version": 1},
+            ],
+        }
+    ],
+)
+@pytest.mark.happy_path
+def test_migrate(client, records, keys_data_old, keys_data_new):
+    secret_accessor_old = SecretKeyAccessor(lambda: keys_data_old)
+    secret_accessor_new = SecretKeyAccessor(lambda: keys_data_new)
+
+    stored_records = [
+        client(encrypt=True, secret_accessor=secret_accessor_old).encrypt_record(dict(x))
+        for x in records
+    ]
+
+    total_stored = len(stored_records) + 1
+
+    httpretty.register_uri(
+        httpretty.POST,
+        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
+        body=json.dumps(
+            {"meta": {"total": total_stored, "count": len(stored_records)}, "data": stored_records}
+        ),
+    )
+
+    httpretty.register_uri(
+        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite"
+    )
+
+    migrate_res = client(encrypt=True, secret_accessor=secret_accessor_new).migrate(country=COUNTRY)
+
+    assert migrate_res["total_left"] == total_stored - len(stored_records)
+    assert migrate_res["migrated"] == len(stored_records)
+
+    received_records = json.loads(httpretty.last_request().body)
+    for received_record in received_records:
+        original_stored_record = next(
+            (item for item in stored_records if item.get("key") == received_record.get("key")), None
+        )
+
+        assert original_stored_record is not None
+
+        assert original_stored_record.get("version") != received_record.get("version")
+        assert received_record.get("version") == keys_data_new.get("currentVersion")
+
+        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
+            if original_stored_record.get(k, None):
+                assert received_record[k] == original_stored_record[k]
+
+        if original_stored_record.get("body", None):
+            assert received_record["body"] != original_stored_record["body"]
 
 
 @httpretty.activate
@@ -494,11 +559,7 @@ def test_update(client, record, update_key, encrypt):
 def test_default_endpoint(client, record, country, countries):
     midpop_ids = [c["id"].lower() for c in countries if c["direct"]]
     is_midpop = country in midpop_ids
-    endpoint = (
-        Storage.get_midpop_url(country)
-        if is_midpop
-        else Storage.DEFAULT_ENDPOINT
-    )
+    endpoint = Storage.get_midpop_url(country) if is_midpop else Storage.DEFAULT_ENDPOINT
 
     countries_url = Storage.PORTALBACKEND_URI + "/countries"
     httpretty.register_uri(httpretty.GET, countries_url, body=json.dumps({"countries": countries}))
@@ -560,9 +621,7 @@ def test_find_error(client, query):
         body=json.dumps({"meta": {"total": 0}, "data": []}),
     )
 
-    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
-        StorageClientError
-    )
+    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(StorageClientError)
 
 
 @httpretty.activate
@@ -680,3 +739,11 @@ def test_error_find_insufficient_args(client, record):
 @pytest.mark.error_path
 def test_error_find_one_insufficient_args(client, record):
     client().find_one.when.called_with(**record).should.have.raised(Exception)
+
+
+@pytest.mark.error_path
+def test_error_migrate_without_encryption(client):
+    client(encrypt=False).migrate.when.called_with(country=COUNTRY).should.have.raised(
+        StorageClientError
+    )
+
