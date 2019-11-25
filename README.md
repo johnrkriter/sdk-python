@@ -107,15 +107,15 @@ Here is how data is transformed and stored in InCountry database:
 ```
 
 #### Batches
-Use `batchWrite` method to create/replace multiple records at once
+Use `batch_write` method to create/replace multiple records at once
 
 ```
-batch_success = storage.batchWrite(
+batch_success = storage.batch_write(
 	country="string",     # Required country code of where to store the data
 	records="list"        # Required list of records
 )
 
-# `batchWrite` returns True on success
+# `batch_write` returns True on success
 ```
 
 
