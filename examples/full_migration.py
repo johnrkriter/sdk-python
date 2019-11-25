@@ -28,6 +28,6 @@ storage = Storage(
 
 while not migration_complete:
     migration_res = storage.migrate(country=COUNTRY, limit=50)
-    if migration_res["total_left"] <= 0:
+    if migration_res["total_left"] == 0:
         migration_complete = True
     time.sleep(1)
