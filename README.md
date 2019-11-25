@@ -21,7 +21,7 @@ from incountry import Storage
 storage = Storage(
     api_key="string",              # Required to be passed in, or as environment variable INC_API_KEY
     environment_id="string",       # Required to be passed in, or as environment variable INC_ENVIRONMENT_ID
-    endpoint="string",             # Optional. Defines API URL
+    endpoint="string",             # Optional. Defines API URL. Can also be set up using environment variable INC_ENDPOINT
     encrypt=bool,                  # Optional. If False, encryption is not used
     debug=bool,                    # Optional. If True enables some debug logging
     secret_key_accessor=accessor,  # Instance of SecretKeyAccessor class. Used to fetch encryption secret
@@ -35,9 +35,26 @@ You can turn off encryption (not recommended). Set `encrypt` property to `false`
 
 #### Encryption key
 
-`secret_key_accessor` is used to pass a secret used for encryption.
+`secret_key_accessor` is used to pass secret/secrets used for encryption.
 
-Note: even though PBKDF2 is used internally to generate a cryptographically strong encryption key, you must make sure that you use strong enough password.
+Note: even though SDK uses PBKDF2 to generate a cryptographically strong encryption key, you must make sure you provide a secret/password which follows modern security best practices and standards.
+
+`SecretKeyAccessor` class constructor allows you to pass a function that should return either a string representing your secret or a dict (we call it `secrets_data` object):
+
+```
+{
+  secrets: [{
+       secret: <string>,
+       version: <int>
+  }, ....],
+  currentVersion: <int>,
+}
+```
+
+`secrets_data` allows you to specify multiple keys which SDK will use for decryption based on the version of the secret used for encryption. Meanwhile SDK will encrypt only using secret that matches `currentVersion` provided in `secrets_data` object.
+
+This enables the flexibility required to support Key Rotation policies when secrets/keys need to be changed with time. SDK will encrypt data using newer secret while maintaining the ability to decrypt records encrypted with old secrets. SDK also provides a method for data migration which allows to re-encrypt data with the newest secret. For details please see `migrate` method.
+
 
 Here are some examples how you can use `SecretKeyAccessor`.
 ```
@@ -47,21 +64,21 @@ from incountry import SecretKeyAccessor
 password = "password"
 secret_key_accessor = SecretKeyAccessor(lambda: password)
 
-# Get secret via http request
+# Get secrets via http request
 from incountry import SecretKeyAccessor
 import requests as req
 
-def get_secret():
+def get_secrets_data():
     url = "<your_secret_url>"
     r = req.get(url)
-    return r.json().get("secret") # assuming response is {"secret": "password"}
+    return r.json() # assuming response is a `secrets_data` object
 
-secret_key_accessor = SecretKeyAccessor(get_secret)
+secret_key_accessor = SecretKeyAccessor(get_secrets_data)
 ```
 
 ### Writing data to Storage
 
-Use `write` method in order to create a record.
+Use `write` method in order to create/replace (by `key`) a record.
 ```
 record = storage.write(
 	country="string",      # Required country code of where to store the data
@@ -88,6 +105,20 @@ Here is how data is transformed and stored in InCountry database:
 	key3          # hashed
  }
 ```
+
+#### Batches
+Use `batchWrite` method to create/replace multiple records at once
+
+```
+batch_success = storage.batchWrite(
+	country="string",     # Required country code of where to store the data
+	records="list"        # Required list of records
+)
+
+# `batchWrite` returns True on success
+```
+
+
 ### Reading stored data
 
 Stored record can be read by `key` using `readAsync` method. It accepts an object with two fields: `country` and `key`
@@ -162,6 +193,20 @@ storage.delete(
 
 # delete will raise an Exception if fails
 ```
+
+## Data Migration and Key Rotation support
+Using `secret_key_accessor` that provides `secrets_data` object enables key rotation and data migration support.
+
+SDK introduces `migrate(country: str, limit: int)` method which allows you to re-encrypt data encrypted with old versions of the secret. You should specify `country` you want to conduct migration in and `limit` for precise amount of records to migrate. `migrate` return a dict which contains some information about the migration - the amount of records migrated (`migrated`) and the amount of records left to migrate (`total_left`) (which basically means the amount of records with version different from `currentVersion` provided by `secret_key_accessor`)
+
+```
+{
+	"migrated": <int>
+	"total_left": <int>
+}
+```
+
+For a detailed example of a migration script please see `/examples/full_migration.py`
 
 Testing Locally
 -----
