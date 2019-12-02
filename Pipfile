@@ -24,7 +24,7 @@ jsonschema = "*"
 python_version = "3.7"
 
 [scripts]
-tests = "pytest --ignore=tests/integration --cov=incountry --cov-report term-missing -v"
+tests = "pipenv run pytest --disable-pytest-warnings -s -vv --ignore=tests/integration -vv --cov=sdk-python --cov-report xml:coverage.xml --cov-report term"
 integrations = "pytest --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report term-missing -v"
 
 [pipenv]

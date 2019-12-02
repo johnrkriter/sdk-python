@@ -2,12 +2,19 @@ import pytest
 import incountry
 import uuid
 from pytest_testrail.plugin import pytestrail
+from incountry import SecretKeyAccessor
 
 
 @pytest.fixture()
 def client():
     # env should contain: INC_ENV_ID and INC_API_KEY)
-    yield incountry.Storage(encrypt=False, debug=True)
+    yield incountry.Storage(
+        encrypt=False,
+        debug=True,
+        endpoint='https://us.qa.incountry.io/',
+        api_key='ntxeco.633d10bddfd9470d92b8171ba1939e7f',
+        environment_id='28aea35a-b8fa-47e0-8295-93743d4badb6',
+    )
 
     
 @pytestrail.case('С143')
@@ -45,7 +52,7 @@ def test_delete_single_pop(client):
 
 @pytestrail.case('С148')
 def test_using_encryption():
-    eclient = incountry.Storage(encrypt=True, secret_key="supersecret")
+    eclient = incountry.Storage(encrypt=True, secret_key_accessor=SecretKeyAccessor(lambda: 'supersecret'))
     eclient.write(country="us", key="key1", body="You cant read this text")
 
     client = incountry.Storage(encrypt=False)
