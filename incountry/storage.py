@@ -19,13 +19,7 @@ class Storage(object):
         return "https://{}.api.incountry.io".format(country)
 
     def __init__(
-        self,
-        environment_id=None,
-        api_key=None,
-        endpoint=None,
-        encrypt=True,
-        secret_key_accessor=None,
-        debug=False,
+        self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
     ):
         """
         Returns a client to talk to the InCountry storage network.
@@ -70,6 +64,8 @@ class Storage(object):
             if not isinstance(secret_key_accessor, SecretKeyAccessor):
                 raise ValueError("Encryption is on. Provide secret_key_accessor parameter of class SecretKeyAccessor")
             self.crypto = InCrypto(secret_key_accessor)
+        else:
+            self.crypto = InCrypto()
 
     def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()
@@ -79,7 +75,7 @@ class Storage(object):
             if record_kwargs.get(k):
                 data[k] = record_kwargs.get(k)
 
-        data_to_send = self.encrypt_record(data) if self.encrypt else data
+        data_to_send = self.encrypt_record(data)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country),
@@ -110,12 +106,10 @@ class Storage(object):
     def read(self, country: str, key: str):
         country = country.lower()
 
-        if self.encrypt:
-            key = self.hash_custom_key(key)
+        key = self.hash_custom_key(key)
 
         r = requests.get(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
-            headers=self.headers(),
+            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key), headers=self.headers(),
         )
         if r.status_code == 404:
             # Not found is ok
@@ -154,10 +148,7 @@ class Storage(object):
 
         return {
             "meta": response["meta"],
-            "data": [
-                self.decrypt_record(record) if self.encrypt else record
-                for record in response["data"]
-            ],
+            "data": [self.decrypt_record(record) if self.encrypt else record for record in response["data"]],
         }
 
     def find_one(self, offset=0, **kwargs):
@@ -171,8 +162,7 @@ class Storage(object):
             key = self.hash_custom_key(key)
 
         r = requests.delete(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key),
-            headers=self.headers(),
+            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key), headers=self.headers(),
         )
         self.raise_if_server_error(r)
         return r.json()
@@ -252,11 +242,7 @@ class Storage(object):
 
         is_midpop = country in midpops
 
-        res = (
-            Storage.get_midpop_url(country) + path
-            if is_midpop
-            else "{}{}".format(self.DEFAULT_ENDPOINT, path)
-        )
+        res = Storage.get_midpop_url(country) + path if is_midpop else "{}{}".format(self.DEFAULT_ENDPOINT, path)
 
         self.log("Endpoint: ", res)
         return res
@@ -270,6 +256,4 @@ class Storage(object):
 
     def raise_if_server_error(self, response):
         if response.status_code >= 400:
-            raise StorageServerError(
-                "{} {} - {}".format(response.status_code, response.url, response.text)
-            )
+            raise StorageServerError("{} {} - {}".format(response.status_code, response.url, response.text))
