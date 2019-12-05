@@ -14,13 +14,7 @@ TEST_RECORDS = [
     {"key": str(uuid.uuid1()), "body": "test"},
     {"key": str(uuid.uuid1()), "body": "test", "key2": "key2"},
     {"key": str(uuid.uuid1()), "body": "test", "key2": "key2", "key3": "key3"},
-    {
-        "key": str(uuid.uuid1()),
-        "body": "test",
-        "key2": "key2",
-        "key3": "key3",
-        "profile_key": "profile_key",
-    },
+    {"key": str(uuid.uuid1()), "body": "test", "key2": "key2", "key3": "key3", "profile_key": "profile_key"},
     {
         "key": str(uuid.uuid1()),
         "body": "test",
@@ -36,9 +30,7 @@ def mock_backend():
     httpretty.register_uri(
         httpretty.GET,
         Storage.PORTALBACKEND_URI + "/countries",
-        body=json.dumps(
-            {"countries": [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]}
-        ),
+        body=json.dumps({"countries": [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]}),
     )
 
 
@@ -63,7 +55,6 @@ def client():
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_write(client, record, encrypt):
-    print(POPAPI_URL + "/v2/storage/records/" + COUNTRY)
     mock_backend()
     httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
 
@@ -77,8 +68,6 @@ def test_write(client, record, encrypt):
     for k in ["body", "key", "key2", "key3", "profile_key"]:
         if record.get(k, None) and encrypt:
             assert received_record[k] != record[k]
-        if record.get(k, None) and not encrypt:
-            assert received_record[k] == record[k]
 
 
 @httpretty.activate
@@ -87,8 +76,8 @@ def test_write(client, record, encrypt):
 @pytest.mark.happy_path
 def test_read(client, record, encrypt):
     stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
+
+    stored_record = client(encrypt).encrypt_record(stored_record)
 
     httpretty.register_uri(
         httpretty.GET,
@@ -104,50 +93,15 @@ def test_read(client, record, encrypt):
 
 
 @httpretty.activate
-@pytest.mark.parametrize("record", TEST_RECORDS)
-@pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.happy_path
-def test_read_old_data(client, record, encrypt):
-    stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
-        if record.get("body", None):
-            stored_record["body"] = client(encrypt).crypto.encrypt(record["body"])
-        else:
-            del stored_record["body"]
-
-    httpretty.register_uri(
-        httpretty.GET,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"],
-        body=json.dumps(stored_record),
-    )
-
-    record_response = client(encrypt).read(country=COUNTRY, key=record["key"])
-
-    for k in ["body", "range_key"]:
-        if record.get(k, None):
-            assert record_response[k] == record[k]
-
-    for k in ["key", "key2", "key3", "profile_key"]:
-        if record.get(k, None) and encrypt:
-            assert record_response[k] != record[k]
-        if record.get(k, None) and not encrypt:
-            assert record_response[k] == record[k]
-
-
-@httpretty.activate
 @pytest.mark.parametrize("record", [TEST_RECORDS[0]])
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_read_not_found(client, record, encrypt):
     stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
+    stored_record = client(encrypt).encrypt_record(stored_record)
 
     httpretty.register_uri(
-        httpretty.GET,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"],
-        status=404,
+        httpretty.GET, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"], status=404,
     )
 
     record_response = client(encrypt).read(country=COUNTRY, key=record["key"])
@@ -163,8 +117,7 @@ def test_delete(client, record, encrypt):
     response = {"result": "OK"}
 
     stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
+    stored_record = client(encrypt).encrypt_record(stored_record)
 
     httpretty.register_uri(
         httpretty.DELETE,
@@ -200,9 +153,7 @@ def test_delete(client, record, encrypt):
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_find(client, query, records, encrypt):
-    enc_data = [dict(x) for x in records]
-    if encrypt:
-        enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
+    enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
 
     httpretty.register_uri(
         httpretty.POST,
@@ -217,20 +168,15 @@ def test_find(client, query, records, encrypt):
     received_record.should.have.key("filter")
     received_record.should.have.key("options")
     received_record["options"].should.equal(
-        {
-            "limit": query.get("limit", Storage.FIND_LIMIT),
-            "offset": query.get("offset", 0),
-        }
+        {"limit": query.get("limit", Storage.FIND_LIMIT), "offset": query.get("offset", 0)}
     )
 
     if query.get("range_key", None):
         assert received_record["filter"]["range_key"] == query["range_key"]
 
     for k in ["key", "key2", "key3", "profile_key"]:
-        if query.get(k, None) and encrypt:
+        if query.get(k, None):
             assert received_record["filter"][k] != query[k]
-        if query.get(k, None) and not encrypt:
-            assert received_record["filter"][k] == query[k]
 
     find_response.should.be.a(dict)
 
@@ -239,6 +185,43 @@ def test_find(client, query, records, encrypt):
         for k in ["body", "key", "key2", "key3", "profile_key"]:
             if match.get(k, None):
                 assert data_record[k] == match[k]
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    "query,records", [({"key": "key1"}, TEST_RECORDS)],
+)
+@pytest.mark.parametrize("encrypt", [True, False])
+@pytest.mark.happy_path
+def test_find_enc_and_non_enc(client, query, records, encrypt):
+    records_to_enc = records[len(records) // 2 :]
+    records_to_not_enc = records[: len(records) // 2]
+    stored_enc_data = [client(encrypt=True).encrypt_record(dict(x)) for x in records_to_enc]
+    stored_non_enc_data = [client(encrypt=False).encrypt_record(dict(x)) for x in records_to_not_enc]
+    stored_data = stored_enc_data + stored_non_enc_data
+
+    httpretty.register_uri(
+        httpretty.POST,
+        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
+        body=json.dumps({"meta": {"total": len(stored_data)}, "data": stored_data}),
+    )
+
+    find_response = client(encrypt).find(country=COUNTRY, **query)
+
+    encrypted_records_received = []
+    for data_record in find_response.get("data"):
+        match = next((r for r in records if data_record["key"] == r["key"]), None)
+        if match:
+            for k in ["body", "key", "key2", "key3", "profile_key"]:
+                if match.get(k, None):
+                    assert data_record[k] == match[k]
+        else:
+            encrypted_records_received.append(data_record)
+
+    if encrypt:
+        assert len(encrypted_records_received) == 0
+    else:
+        assert len(encrypted_records_received) == len(records_to_enc)
 
 
 @httpretty.activate
@@ -256,8 +239,7 @@ def test_find_one(client, query, record, encrypt):
     stored_record = None
     if record:
         stored_record = dict(record)
-        if encrypt:
-            stored_record = client(encrypt).encrypt_record(stored_record)
+        stored_record = client(encrypt).encrypt_record(stored_record)
 
     httpretty.register_uri(
         httpretty.POST,
@@ -280,9 +262,7 @@ def test_find_one(client, query, record, encrypt):
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_update(client, record, update_key, encrypt):
-    stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
+    stored_record = client(encrypt).encrypt_record(dict(record))
 
     httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
     httpretty.register_uri(
@@ -292,14 +272,7 @@ def test_update(client, record, update_key, encrypt):
     )
 
     data_for_update = dict(
-        [
-            (
-                update_key,
-                record[update_key] + 1
-                if isinstance(record[update_key], int)
-                else record[update_key] + "1",
-            )
-        ]
+        [(update_key, record[update_key] + 1 if isinstance(record[update_key], int) else record[update_key] + "1",)]
     )
 
     updated_record = client(encrypt).update_one(
@@ -320,13 +293,8 @@ def test_update(client, record, update_key, encrypt):
         assert received_record["range_key"] == data_for_update["range_key"]
 
     for k in ["body", "key", "key2", "key3", "profile_key"]:
-        if record.get(k, None) and encrypt:
+        if record.get(k, None):
             assert received_record[k] != record[k]
-
-        if record.get(k, None) and not encrypt and update_key != k:
-            assert received_record[k] == record[k]
-        if record.get(k, None) and not encrypt and update_key == k:
-            assert received_record[k] == data_for_update[k]
 
 
 @httpretty.activate
@@ -339,21 +307,19 @@ def test_update(client, record, update_key, encrypt):
 )
 @pytest.mark.happy_path
 def test_default_endpoint(client, record, country, countries):
+    stored_record = client().encrypt_record(dict(record))
+
     midpop_ids = [c["id"].lower() for c in countries if c["direct"]]
     is_midpop = country in midpop_ids
-    endpoint = (
-        Storage.get_midpop_url(country)
-        if is_midpop
-        else Storage.DEFAULT_ENDPOINT
-    )
+    endpoint = Storage.get_midpop_url(country) if is_midpop else Storage.DEFAULT_ENDPOINT
 
     countries_url = Storage.PORTALBACKEND_URI + "/countries"
     httpretty.register_uri(httpretty.GET, countries_url, body=json.dumps({"countries": countries}))
 
-    read_url = endpoint + "/v2/storage/records/" + country + "/" + record["key"]
+    read_url = endpoint + "/v2/storage/records/" + country + "/" + stored_record["key"]
     httpretty.register_uri(httpretty.GET, read_url, body=json.dumps(record))
 
-    record_response = client(encrypt=False, endpoint=None).read(country=country, key=record["key"])
+    record_response = client(endpoint=None).read(country=country, key=record["key"])
 
     for k in ["body", "key", "key2", "key3", "profile_key", "range_key"]:
         if record.get(k, None):
@@ -373,12 +339,11 @@ def test_default_endpoint(client, record, country, countries):
 @pytest.mark.parametrize("record,country", [({"key": "key1"}, "ru"), ({"key": "key1"}, "ag")])
 @pytest.mark.happy_path
 def test_custom_endpoint(client, record, country):
-    read_url = POPAPI_URL + "/v2/storage/records/" + country + "/" + record["key"]
-    httpretty.register_uri(httpretty.GET, read_url, body=json.dumps(record))
+    stored_record = client().encrypt_record(dict(record))
+    read_url = POPAPI_URL + "/v2/storage/records/" + country + "/" + stored_record["key"]
+    httpretty.register_uri(httpretty.GET, read_url, body=json.dumps(stored_record))
 
-    record_response = client(encrypt=False, endpoint=POPAPI_URL).read(
-        country=country, key=record["key"]
-    )
+    record_response = client(endpoint=POPAPI_URL).read(country=country, key=record["key"])
 
     for k in ["body", "key", "key2", "key3", "profile_key", "range_key"]:
         if record.get(k, None):
@@ -392,12 +357,7 @@ def test_custom_endpoint(client, record, country):
 
 @httpretty.activate
 @pytest.mark.parametrize(
-    "query",
-    [
-        {"key": "key1", "limit": -1},
-        {"key": "key1", "limit": 101},
-        {"key": "key1", "limit": 1, "offset": -1},
-    ],
+    "query", [{"key": "key1", "limit": -1}, {"key": "key1", "limit": 101}, {"key": "key1", "limit": 1, "offset": -1}],
 )
 @pytest.mark.error_path
 def test_find_error(client, query):
@@ -407,9 +367,7 @@ def test_find_error(client, query):
         body=json.dumps({"meta": {"total": 0}, "data": []}),
     )
 
-    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
-        StorageClientError
-    )
+    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(StorageClientError)
 
 
 @httpretty.activate
@@ -417,9 +375,7 @@ def test_find_error(client, query):
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.error_path
 def test_update_error(client, records, encrypt):
-    enc_data = [dict(x) for x in records]
-    if encrypt:
-        enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
+    enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
 
     httpretty.register_uri(
         httpretty.POST,
@@ -453,42 +409,22 @@ def test_init_error_on_insufficient_args(client, kwargs):
 @pytest.mark.error_path
 def test_error_on_popapi_error(client, record, encrypt):
     mock_backend()
-    stored_record = dict(record)
-    if encrypt:
-        stored_record = client(encrypt).encrypt_record(stored_record)
+    stored_record = client(encrypt).encrypt_record(dict(record))
 
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find", status=400)
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, status=400)
     httpretty.register_uri(
-        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find", status=400
+        httpretty.GET, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"], status=400,
     )
     httpretty.register_uri(
-        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, status=400
-    )
-    httpretty.register_uri(
-        httpretty.GET,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"],
-        status=400,
-    )
-    httpretty.register_uri(
-        httpretty.DELETE,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"],
-        status=400,
+        httpretty.DELETE, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record["key"], status=400,
     )
 
-    client(encrypt).write.when.called_with(country=COUNTRY, **record).should.have.raised(
-        StorageServerError
-    )
-    client(encrypt).read.when.called_with(country=COUNTRY, **record).should.have.raised(
-        StorageServerError
-    )
-    client(encrypt).delete.when.called_with(country=COUNTRY, **record).should.have.raised(
-        StorageServerError
-    )
-    client(encrypt).find.when.called_with(country=COUNTRY, **record).should.have.raised(
-        StorageServerError
-    )
-    client(encrypt).find_one.when.called_with(country=COUNTRY, **record).should.have.raised(
-        StorageServerError
-    )
+    client(encrypt).write.when.called_with(country=COUNTRY, **record).should.have.raised(StorageServerError)
+    client(encrypt).read.when.called_with(country=COUNTRY, **record).should.have.raised(StorageServerError)
+    client(encrypt).delete.when.called_with(country=COUNTRY, **record).should.have.raised(StorageServerError)
+    client(encrypt).find.when.called_with(country=COUNTRY, **record).should.have.raised(StorageServerError)
+    client(encrypt).find_one.when.called_with(country=COUNTRY, **record).should.have.raised(StorageServerError)
 
 
 @pytest.mark.parametrize("record", [{}, {"country": COUNTRY}, {"key": "key1"}])
