@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
 from .exceptions import InCryptoException
+from .secret_key_accessor import SecretKeyAccessor
 
 
 class InCrypto:
@@ -17,6 +18,7 @@ class InCrypto:
     PBKDF2_DIGEST = "sha512"
 
     ENC_VERSION = "2"
+    PT_ENC_VERSION = "pt"
 
     @staticmethod
     def pack_base64(salt, iv, enc, auth_tag):
@@ -33,16 +35,18 @@ class InCrypto:
         return [
             b_data[: InCrypto.SALT_LENGTH],
             b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
-            b_data[
-                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
-            ],
+            b_data[InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH],
             b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
-    def __init__(self, secret_key_accessor):
+    def __init__(self, secret_key_accessor=None):
         self.secret_key_accessor = secret_key_accessor
 
     def __get_decryptor(self, enc_version):
+        if enc_version == self.PT_ENC_VERSION:
+            return self.decrypt_pt
+        if self.secret_key_accessor is None:
+            return self.decrypt_stub
         if enc_version == "0":
             return self.decrypt_v0
         if enc_version == "1":
@@ -53,13 +57,17 @@ class InCrypto:
         raise InCryptoException("Unknown decryptor version requested")
 
     def encrypt(self, raw):
+        if self.secret_key_accessor is None:
+            return [
+                self.PT_ENC_VERSION + ":" + base64.b64encode(raw.encode("utf8")).decode("utf8"),
+                SecretKeyAccessor.DEFAULT_VERSION,
+            ]
+
         salt = os.urandom(InCrypto.SALT_LENGTH)
         iv = os.urandom(InCrypto.IV_LENGTH)
         [key, key_version] = self.get_key(salt)
 
-        encryptor = Cipher(
-            algorithms.AES(key), modes.GCM(iv), backend=default_backend()
-        ).encryptor()
+        encryptor = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend()).encryptor()
         try:
             encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
             auth_tag = encryptor.tag
@@ -89,6 +97,12 @@ class InCrypto:
         except Exception as e:
             raise InCryptoException(e) from e
 
+    def decrypt_pt(self, enc, key_version=None):
+        return base64.b64decode(enc).decode("utf8")
+
+    def decrypt_stub(self, enc, key_version=None):
+        return enc
+
     def decrypt_v0(self, enc, key_version):
         [secret, *rest] = self.secret_key_accessor.get_secret(version=key_version)
         secret_bytes = hashlib.sha256(secret.encode("utf-8")).hexdigest()
@@ -100,9 +114,7 @@ class InCrypto:
             return data[: -ord(data[len(data) - 1 :])]
 
         enc = bytes.fromhex(enc)
-        decryptor = Cipher(
-            algorithms.AES(key), modes.CBC(iv), backend=default_backend()
-        ).decryptor()
+        decryptor = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend()).decryptor()
         return unpad(decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def decrypt_v1(self, packed_enc, key_version):
@@ -115,26 +127,20 @@ class InCrypto:
         [salt, iv, enc, auth_tag] = [
             b_data[: InCrypto.SALT_LENGTH],
             b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
-            b_data[
-                InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH
-            ],
+            b_data[InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH],
             b_data[-InCrypto.AUTH_TAG_LENGTH :],
         ]
 
         [key, *rest] = self.get_key(salt, key_version=key_version)
 
-        decryptor = Cipher(
-            algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()
-        ).decryptor()
+        decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def decrypt_v2(self, packed_enc, key_version):
         [salt, iv, enc, auth_tag] = self.unpack_base64(packed_enc)
         [key, *rest] = self.get_key(salt, key_version=key_version)
 
-        decryptor = Cipher(
-            algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()
-        ).decryptor()
+        decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def get_key(self, salt, key_version=None):

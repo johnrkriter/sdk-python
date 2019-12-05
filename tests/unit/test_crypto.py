@@ -1,7 +1,7 @@
 import os
 import pytest
 import sure
-
+import base64
 
 from incountry import InCrypto, InCryptoException, SecretKeyAccessor
 
@@ -17,6 +17,7 @@ PLAINTEXTS = [
 ]
 
 PREPARED_DATA_BY_VERSION = {
+    "pt": [(("pt:SW5Db3VudHJ5"), "InCountry", "")],
     "0": [(("7765618db31daf5366a6fc3520010327"), "InCountry", "password")],
     "1": [
         (
@@ -68,16 +69,25 @@ def test_unpack_error():
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
-@pytest.mark.parametrize("password", ["password"])
+@pytest.mark.parametrize("secret_key_accessor", [SecretKeyAccessor(lambda: "password"), None])
 @pytest.mark.happy_path
-def test_enc_dec(plaintext, password):
-    secret_accessor = SecretKeyAccessor(lambda: password)
-    cipher = InCrypto(secret_accessor)
+def test_enc_dec(plaintext, secret_key_accessor):
+    cipher = InCrypto(secret_key_accessor)
 
     [enc, *rest] = cipher.encrypt(plaintext)
     dec = cipher.decrypt(enc)
 
     assert plaintext == dec
+
+
+@pytest.mark.parametrize("plaintext", PLAINTEXTS)
+@pytest.mark.happy_path
+def test_enc_without_secret_key_accessor(plaintext):
+    cipher = InCrypto()
+
+    [enc, version] = cipher.encrypt(plaintext)
+    base64.b64decode.when.called_with(enc[len(InCrypto.PT_ENC_VERSION) + 1 :]).should_not.throw(Exception)
+    assert version == SecretKeyAccessor.DEFAULT_VERSION
 
 
 @pytest.mark.parametrize(
@@ -106,18 +116,33 @@ def test_hash():
     "secret_key_accessor, expected_version",
     [
         (SecretKeyAccessor(lambda: "password"), SecretKeyAccessor.DEFAULT_VERSION),
-        (
-            SecretKeyAccessor(
-                lambda: {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}
-            ),
-            1,
-        ),
+        (SecretKeyAccessor(lambda: {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}), 1,),
     ],
 )
 def test_get_current_version(secret_key_accessor, expected_version):
     cipher = InCrypto(secret_key_accessor=secret_key_accessor)
 
     assert cipher.get_current_secret_version() == expected_version
+
+
+@pytest.mark.parametrize(
+    "ciphertext, plaintext, password",
+    [
+        data
+        for version, version_dataset in PREPARED_DATA_BY_VERSION.items()
+        for data in version_dataset
+        if version != "pt"
+    ],
+)
+@pytest.mark.happy_path
+def test_dec_non_pt_without_secret_key_accessor(ciphertext, plaintext, password):
+    cipher = InCrypto()
+
+    dec = cipher.decrypt(ciphertext)
+    if ":" in ciphertext:
+        assert dec == ciphertext.split(":")[1]
+    else:
+        assert dec == ciphertext
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
@@ -132,6 +157,14 @@ def test_enc_dec_v1_wrong_password(plaintext, password):
     [enc, *rest] = cipher.encrypt(plaintext)
 
     cipher2.decrypt.when.called_with(enc).should.have.raised(InCryptoException)
+
+
+@pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["pt"])
+@pytest.mark.error_path
+def test_dec_vPT_no_b64(ciphertext, plaintext, password):
+    cipher = InCrypto()
+
+    cipher.decrypt.when.called_with(ciphertext + ":").should.have.raised(InCryptoException)
 
 
 @pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["0"])
@@ -168,8 +201,3 @@ def test_wrong_ciphertext(ciphertext):
     cipher = InCrypto(secret_accessor)
 
     cipher.decrypt.when.called_with(ciphertext).should.have.raised(InCryptoException)
-
-
-@pytest.mark.error_path
-def test_no_secret_key_accessor():
-    InCrypto.when.called_with().should.have.raised(TypeError)
