@@ -119,10 +119,15 @@ def test_hash():
         if version != "pt"
     ],
 )
-@pytest.mark.error_path
+@pytest.mark.happy_path
 def test_dec_non_pt_without_secret_key_accessor(ciphertext, plaintext, password):
     cipher = InCrypto()
-    cipher.decrypt.when.called_with(ciphertext).should.have.raised(InCryptoException)
+
+    dec = cipher.decrypt(ciphertext)
+    if ":" in ciphertext:
+        assert dec == ciphertext.split(":")[1]
+    else:
+        assert dec == ciphertext
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)

@@ -118,7 +118,7 @@ class Storage(object):
         self.raise_if_server_error(r)
         data = r.json()
 
-        return self.decrypt_record(data) if self.encrypt else data
+        return self.decrypt_record(data)
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
         if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
@@ -127,15 +127,8 @@ class Storage(object):
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")
 
-        filter_params = {}
+        filter_params = self.prepare_filter_params(**filter_kwargs)
         options = {"limit": limit, "offset": offset}
-
-        for k in ["key", "key2", "key3", "profile_key", "range_key"]:
-            if filter_kwargs.get(k):
-                filter_params[k] = filter_kwargs.get(k)
-
-        if self.encrypt:
-            filter_params = self.hash_find_keys(filter_params)
 
         r = requests.post(
             self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
@@ -148,7 +141,7 @@ class Storage(object):
 
         return {
             "meta": response["meta"],
-            "data": [self.decrypt_record(record) if self.encrypt else record for record in response["data"]],
+            "data": [self.decrypt_record(record) for record in response["data"]],
         }
 
     def find_one(self, offset=0, **kwargs):
@@ -158,8 +151,7 @@ class Storage(object):
     def delete(self, country: str, key: str):
         country = country.lower()
 
-        if self.encrypt:
-            key = self.hash_custom_key(key)
+        key = self.hash_custom_key(key)
 
         r = requests.delete(
             self.getendpoint(country, "/v2/storage/records/" + country + "/" + key), headers=self.headers(),
@@ -184,14 +176,17 @@ class Storage(object):
     def hash_custom_key(self, value):
         return self.crypto.hash(value + ":" + self.env_id)
 
-    def hash_find_keys(self, filter_params):
-        res = dict(filter_params)
+    def prepare_filter_params(self, **filter_kwargs):
+        filter_params = {}
         for k in ["key", "key2", "key3", "profile_key"]:
-            if res.get(k, None) and isinstance(res[k], list):
-                res[k] = [self.hash_custom_key(x) for x in res[k]]
-            elif res.get(k, None):
-                res[k] = self.hash_custom_key(res[k])
-        return res
+            if filter_kwargs.get(k):
+                if filter_kwargs.get(k, None) and isinstance(filter_kwargs[k], list):
+                    filter_params[k] = [self.hash_custom_key(x) for x in filter_kwargs[k]]
+                elif filter_kwargs.get(k, None):
+                    filter_params[k] = self.hash_custom_key(filter_kwargs[k])
+        if filter_kwargs.get("range_key", None):
+            filter_params["range_key"] = filter_kwargs["range_key"]
+        return filter_params
 
     def encrypt_record(self, record):
         res = dict(record)
