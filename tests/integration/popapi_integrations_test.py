@@ -5,7 +5,7 @@ import uuid
 
 API_KEY = "fjoxhg.7ea9257f8fe54899b8e8136c62fd02a3"
 ENVIRONMENT_ID = "b6517bec-2a52-4730-aa50-a90e2272bb2f"
-ENDPOINT = "https://us.staging.incountry.io"
+ENDPOINT = "https://us.qa.incountry.io"
 SECRETS_DATA = {
     "secrets": [{"secret": "supersecret", "version": 2,}],
     "currentVersion": 2,
@@ -30,9 +30,7 @@ def test_e2e():
         "body": "test",
     }
 
-    write_response = client.write(
-        country=test_case["country"], key=test_case["key"], body=test_case["body"],
-    )
+    write_response = client.write(country=test_case["country"], key=test_case["key"], body=test_case["body"],)
 
     read_response = client.read(country=test_case["country"], key=test_case["key"])
 
