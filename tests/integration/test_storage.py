@@ -1,9 +1,8 @@
 import os
 import pytest
-import incountry
 import uuid
 from pytest_testrail.plugin import pytestrail
-from incountry import SecretKeyAccessor
+from incountry import SecretKeyAccessor, Storage
 
 API_KEY = os.environ.get("INC_API_KEY")
 ENVIRONMENT_ID = os.environ.get("INC_ENVIRONMENT_ID")
@@ -17,8 +16,13 @@ SECRETS_DATA = {
 @pytest.fixture()
 def client():
     # env should contain: INC_ENV_ID and INC_API_KEY)
-    yield incountry.Storage(
-        encrypt=False, debug=True, api_key=API_KEY, environment_id=ENVIRONMENT_ID, endpoint=ENDPOINT,
+    yield Storage(
+        encrypt=True,
+        debug=True,
+        api_key=API_KEY,
+        environment_id=ENVIRONMENT_ID,
+        endpoint=ENDPOINT,
+        secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
     )
 
 
@@ -61,25 +65,31 @@ def test_delete_single_pop(client):
     assert r is None
 
 
-@pytestrail.case("C148")
-def test_using_encryption():
-    key1 = uuid.uuid4().hex
+# @pytestrail.case("C148")
+# def test_using_encryption():
+#     key1 = uuid.uuid4().hex
 
-    eclient = incountry.Storage(
-        api_key=API_KEY,
-        environment_id=ENVIRONMENT_ID,
-        endpoint=ENDPOINT,
-        encrypt=True,
-        secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
-    )
-    eclient.write(country="us", key=key1, body="You cant read this text")
+#     eclient = Storage(
+#         api_key=API_KEY,
+#         environment_id=ENVIRONMENT_ID,
+#         endpoint=ENDPOINT,
+#         encrypt=True,
+#         secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
+#     )
+#     eclient.write(country="us", key=key1, body="You cant read this text")
 
-    client = incountry.Storage(api_key=API_KEY, environment_id=ENVIRONMENT_ID, endpoint=ENDPOINT, encrypt=False)
-    # Keys won't clash because of encryption
-    client.write(country="us", key=key1, body="You CAN read this text")
+#     client = Storage(
+#         api_key=API_KEY,
+#         environment_id=ENVIRONMENT_ID,
+#         endpoint=ENDPOINT,
+#         encrypt=False,
+#         secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
+#     )
+#     # Keys won't clash because of encryption
+#     client.write(country="us", key=key1, body="You CAN read this text")
 
-    r = eclient.read(country="us", key=key1)
-    assert r["body"] == "You cant read this text"
+#     r = eclient.read(country="us", key=key1)
+#     assert r["body"] == "You cant read this text"
 
-    r = client.read(country="us", key=key1)
-    assert r["body"] == "You CAN read this text"
+#     r = client.read(country="us", key=key1)
+#     assert r["body"] == "You CAN read this text"
