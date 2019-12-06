@@ -4,9 +4,9 @@ import uuid
 from pytest_testrail.plugin import pytestrail
 from incountry import SecretKeyAccessor, Storage
 
-API_KEY = os.environ.get("INC_API_KEY")
-ENVIRONMENT_ID = os.environ.get("INC_ENVIRONMENT_ID")
-ENDPOINT = os.environ.get("INC_ENDPOINT")
+API_KEY = os.environ.get("INT_INC_API_KEY")
+ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
+ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
 SECRETS_DATA = {
     "secrets": [{"secret": "supersecret", "version": 2}],
     "currentVersion": 2,
