@@ -6,9 +6,9 @@ from incountry import SecretKeyAccessor
 
 API_KEY = "fjoxhg.7ea9257f8fe54899b8e8136c62fd02a3"
 ENVIRONMENT_ID = "b6517bec-2a52-4730-aa50-a90e2272bb2f"
-ENDPOINT = "https://us.qa.incountry.io"
+ENDPOINT = "https://us.staging.incountry.io"
 SECRETS_DATA = {
-    "secrets": [{"secret": "supersecret", "version": 2,}],
+    "secrets": [{"secret": "supersecret", "version": 2}],
     "currentVersion": 2,
 }
 
