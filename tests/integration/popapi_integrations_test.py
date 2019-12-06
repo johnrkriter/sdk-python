@@ -1,11 +1,12 @@
+import os
 from incountry import Storage
 from pytest_testrail.plugin import pytestrail
 from incountry import SecretKeyAccessor
 import uuid
 
-API_KEY = "fjoxhg.7ea9257f8fe54899b8e8136c62fd02a3"
-ENVIRONMENT_ID = "b6517bec-2a52-4730-aa50-a90e2272bb2f"
-ENDPOINT = "https://us.staging.incountry.io"
+API_KEY = os.environ.get("INC_API_KEY")
+ENVIRONMENT_ID = os.environ.get("INC_ENVIRONMENT_ID")
+ENDPOINT = os.environ.get("INC_ENDPOINT")
 SECRETS_DATA = {
     "secrets": [{"secret": "supersecret", "version": 2}],
     "currentVersion": 2,
