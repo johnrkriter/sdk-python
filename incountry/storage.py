@@ -10,6 +10,7 @@ from .incountry_crypto import InCrypto
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
 from .validation import batch_records_schema
+from .__version__ import __version__
 
 
 class Storage(object):
@@ -22,7 +23,7 @@ class Storage(object):
         return "https://{}.api.incountry.io".format(country)
 
     def __init__(
-        self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
+            self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
     ):
         """
         Returns a client to talk to the InCountry storage network.
@@ -285,6 +286,7 @@ class Storage(object):
             "Authorization": "Bearer " + self.api_key,
             "x-env-id": self.env_id,
             "Content-Type": "application/json",
+            "User-Agent": "SDK-Python/" + __version__,
         }
 
     def raise_if_server_error(self, response):
