@@ -23,7 +23,7 @@ class Storage(object):
         return "https://{}.api.incountry.io".format(country)
 
     def __init__(
-            self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
+        self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
     ):
         """
         Returns a client to talk to the InCountry storage network.
