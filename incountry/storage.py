@@ -10,6 +10,7 @@ from .incountry_crypto import InCrypto
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
 from .validation import batch_records_schema
+from .__version__ import __version__
 
 
 class Storage(object):
@@ -285,6 +286,7 @@ class Storage(object):
             "Authorization": "Bearer " + self.api_key,
             "x-env-id": self.env_id,
             "Content-Type": "application/json",
+            "User-Agent": "SDK-Python/" + __version__,
         }
 
     def raise_if_server_error(self, response):
