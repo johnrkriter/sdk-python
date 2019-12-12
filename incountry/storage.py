@@ -81,15 +81,9 @@ class Storage(object):
 
         data_to_send = self.encrypt_record(data)
 
-        r = requests.post(
-            self.getendpoint(country, "/v2/storage/records/" + country),
-            headers=self.headers(),
-            data=json.dumps(data_to_send),
-        )
+        self.request(country, "/v2/storage/records/" + country, method="POST", data=json.dumps(data_to_send))
 
-        self.raise_if_server_error(r)
-
-        return data
+        return {"record": {"key": key, **record_kwargs}}
 
     def batch_write(self, country: str, records: list):
         try:
@@ -99,15 +93,11 @@ class Storage(object):
 
         data_to_send = [self.encrypt_record(record) if self.encrypt else record for record in records]
 
-        r = requests.post(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/batchWrite"),
-            headers=self.headers(),
-            data=json.dumps(data_to_send),
+        self.request(
+            country, "/v2/storage/records/" + country + "/batchWrite", method="POST", data=json.dumps(data_to_send)
         )
 
-        self.raise_if_server_error(r)
-
-        return True
+        return {"records": records}
 
     def update_one(self, country: str, filters: dict, **record_kwargs):
         country = country.lower()
@@ -123,24 +113,13 @@ class Storage(object):
 
         self.write(country=country, **updated_record)
 
-        return updated_record
+        return {"record": updated_record}
 
     def read(self, country: str, key: str):
         country = country.lower()
-
         key = self.hash_custom_key(key)
-
-        r = requests.get(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key), headers=self.headers(),
-        )
-        if r.status_code == 404:
-            # Not found is ok
-            return None
-
-        self.raise_if_server_error(r)
-        data = r.json()
-
-        return self.decrypt_record(data)
+        response = self.request(country, "/v2/storage/records/" + country + "/" + key)
+        return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
         if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
@@ -152,14 +131,12 @@ class Storage(object):
         filter_params = self.prepare_filter_params(**filter_kwargs)
         options = {"limit": limit, "offset": offset}
 
-        r = requests.post(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/find"),
-            headers=self.headers(),
+        response = self.request(
+            country,
+            "/v2/storage/records/" + country + "/find",
+            method="POST",
             data=json.dumps({"filter": filter_params, "options": options}),
         )
-
-        self.raise_if_server_error(r)
-        response = r.json()
 
         return {
             "meta": response["meta"],
@@ -168,18 +145,13 @@ class Storage(object):
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
-        return result["data"][0] if len(result["data"]) else None
+        return {"record": result["data"][0]} if len(result["data"]) else None
 
     def delete(self, country: str, key: str):
         country = country.lower()
-
         key = self.hash_custom_key(key)
-
-        r = requests.delete(
-            self.getendpoint(country, "/v2/storage/records/" + country + "/" + key), headers=self.headers(),
-        )
-        self.raise_if_server_error(r)
-        return r.json()
+        self.request(country, "/v2/storage/records/" + country + "/" + key, method="DELETE")
+        return {"success": True}
 
     def migrate(self, country: str, limit: int = FIND_LIMIT):
         if not self.encrypt:
@@ -189,7 +161,7 @@ class Storage(object):
 
         find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
 
-        self.batch_write(country=country, records=find_res.get("data"))
+        self.batch_write(country=country, records=find_res["data"])
 
         return {
             "migrated": find_res["meta"]["count"],
@@ -257,8 +229,8 @@ class Storage(object):
 
     def get_midpop_country_codes(self):
         r = requests.get(self.PORTALBACKEND_URI + "/countries")
-
-        self.raise_if_server_error(r)
+        if r.status_code >= 400:
+            raise StorageServerError("Unable to retrieve countries list")
         data = r.json()
 
         return [country["id"].lower() for country in data["countries"] if country["direct"]]
@@ -281,6 +253,21 @@ class Storage(object):
         self.log("Endpoint: ", res)
         return res
 
+    def request(self, country, path, method="GET", data=None):
+        try:
+            endpoint = self.getendpoint(country, path)
+            res = requests.request(method=method, url=endpoint, headers=self.headers(), data=data)
+
+            if res.status_code >= 400:
+                raise StorageServerError("{} {} - {}".format(res.status_code, res.url, res.text))
+
+            if "json" in res.headers.get("Content-Type", ""):
+                return res.json()
+            else:
+                return res.text
+        except Exception as e:
+            raise StorageServerError(e) from e
+
     def headers(self):
         return {
             "Authorization": "Bearer " + self.api_key,
@@ -288,7 +275,3 @@ class Storage(object):
             "Content-Type": "application/json",
             "User-Agent": "SDK-Python/" + __version__,
         }
-
-    def raise_if_server_error(self, response):
-        if response.status_code >= 400:
-            raise StorageServerError("{} {} - {}".format(response.status_code, response.url, response.text))

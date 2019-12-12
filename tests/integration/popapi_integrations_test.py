@@ -4,6 +4,7 @@ from pytest_testrail.plugin import pytestrail
 from incountry import SecretKeyAccessor
 import uuid
 
+
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
@@ -31,13 +32,15 @@ def test_e2e():
         "body": "test",
     }
 
-    write_response = client.write(country=test_case["country"], key=test_case["key"], body=test_case["body"],)
+    client.write(
+        country=test_case["country"], key=test_case["key"], body=test_case["body"],
+    )
 
     read_response = client.read(country=test_case["country"], key=test_case["key"])
 
     assert read_response is not None
-    assert read_response["body"] == test_case["body"]
-    assert read_response["key"] == test_case["key"]
-    assert read_response["version"] == 2
+    assert read_response["record"]["body"] == test_case["body"]
+    assert read_response["record"]["key"] == test_case["key"]
+    assert read_response["record"]["version"] == SECRETS_DATA["currentVersion"]
 
-    delete_response = client.delete(country=test_case["country"], key=test_case["key"])
+    client.delete(country=test_case["country"], key=test_case["key"])
