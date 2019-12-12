@@ -261,9 +261,9 @@ class Storage(object):
             if res.status_code >= 400:
                 raise StorageServerError("{} {} - {}".format(res.status_code, res.url, res.text))
 
-            if "json" in res.headers.get("Content-Type", ""):
+            try:
                 return res.json()
-            else:
+            except Exception:
                 return res.text
         except Exception as e:
             raise StorageServerError(e) from e
