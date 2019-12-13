@@ -81,7 +81,7 @@ class Storage(object):
 
         data_to_send = self.encrypt_record(data)
 
-        self.request(country, "/v2/storage/records/" + country, method="POST", data=json.dumps(data_to_send))
+        self.request(country, method="POST", data=json.dumps(data_to_send))
 
         return {"record": {"key": key, **record_kwargs}}
 
@@ -93,9 +93,7 @@ class Storage(object):
 
         data_to_send = [self.encrypt_record(record) if self.encrypt else record for record in records]
 
-        self.request(
-            country, "/v2/storage/records/" + country + "/batchWrite", method="POST", data=json.dumps(data_to_send)
-        )
+        self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
 
         return {"records": records}
 
@@ -118,7 +116,7 @@ class Storage(object):
     def read(self, country: str, key: str):
         country = country.lower()
         key = self.hash_custom_key(key)
-        response = self.request(country, "/v2/storage/records/" + country + "/" + key)
+        response = self.request(country, path="/" + key)
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
@@ -132,10 +130,7 @@ class Storage(object):
         options = {"limit": limit, "offset": offset}
 
         response = self.request(
-            country,
-            "/v2/storage/records/" + country + "/find",
-            method="POST",
-            data=json.dumps({"filter": filter_params, "options": options}),
+            country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
 
         return {
@@ -150,7 +145,7 @@ class Storage(object):
     def delete(self, country: str, key: str):
         country = country.lower()
         key = self.hash_custom_key(key)
-        self.request(country, "/v2/storage/records/" + country + "/" + key, method="DELETE")
+        self.request(country, path="/" + key, method="DELETE")
         return {"success": True}
 
     def migrate(self, country: str, limit: int = FIND_LIMIT):
@@ -253,9 +248,10 @@ class Storage(object):
         self.log("Endpoint: ", res)
         return res
 
-    def request(self, country, path, method="GET", data=None):
+    def request(self, country, path="", method="GET", data=None):
         try:
-            endpoint = self.getendpoint(country, path)
+            endpoint = self.getendpoint(country, "/v2/storage/records/" + country + path)
+
             res = requests.request(method=method, url=endpoint, headers=self.headers(), data=data)
 
             if res.status_code >= 400:
