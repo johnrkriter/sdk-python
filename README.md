@@ -33,9 +33,9 @@ storage = Storage(
 
 You can turn off encryption (not recommended). Set `encrypt` property to `false` if you want to do this.
 
-#### Encryption key
+#### Encryption key/secret
 
-`secret_key_accessor` is used to pass secret/secrets used for encryption.
+`secret_key_accessor` is used to pass a key or secret used for encryption.
 
 Note: even though SDK uses PBKDF2 to generate a cryptographically strong encryption key, you must make sure you provide a secret/password which follows modern security best practices and standards.
 
@@ -45,15 +45,19 @@ Note: even though SDK uses PBKDF2 to generate a cryptographically strong encrypt
 {
   secrets: [{
        secret: <string>,
-       version: <int>
+       version: <int>,   # Should be a positive integer
+	   isKey: <boolean>  # Should be True only for user-defined encryption keys
+    }
   }, ....],
   currentVersion: <int>,
 }
 ```
 
-`secrets_data` allows you to specify multiple keys which SDK will use for decryption based on the version of the secret used for encryption. Meanwhile SDK will encrypt only using secret that matches `currentVersion` provided in `secrets_data` object.
+`secrets_data` allows you to specify multiple keys/secrets which SDK will use for decryption based on the version of the key or secret used for encryption. Meanwhile SDK will encrypt only using key/secret that matches `currentVersion` provided in `secrets_data` object.
 
-This enables the flexibility required to support Key Rotation policies when secrets/keys need to be changed with time. SDK will encrypt data using newer secret while maintaining the ability to decrypt records encrypted with old secrets. SDK also provides a method for data migration which allows to re-encrypt data with the newest secret. For details please see `migrate` method.
+This enables the flexibility required to support Key Rotation policies when secrets/keys need to be changed with time. SDK will encrypt data using current secret/key while maintaining the ability to decrypt records encrypted with old keys/secrets. SDK also provides a method for data migration which allows to re-encrypt data with the newest key/secret. For details please see `migrate` method.
+
+SDK allows you to use custom encryption keys, instead of secrets. Please note that user-defined encryption key should be a 32-characters 'utf8' encoded string as required by AES-256 cryptographic algorithm.
 
 
 Here are some examples how you can use `SecretKeyAccessor`.
