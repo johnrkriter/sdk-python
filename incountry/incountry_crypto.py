@@ -14,7 +14,7 @@ class InCrypto:
     IV_LENGTH = 12  # Bytes
     AUTH_TAG_LENGTH = 16  # Bytes
     PBKDF2_ROUNDS = 10000
-    DERIVED_KEY_LENGTH = 32  # Bytes
+    KEY_LENGTH = 32  # Bytes
     PBKDF2_DIGEST = "sha512"
 
     ENC_VERSION = "2"
@@ -144,20 +144,20 @@ class InCrypto:
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def get_key(self, salt, key_version=None):
-        [secret, version] = self.secret_key_accessor.get_secret(version=key_version)
-        return [
+        [secret, version, is_key] = self.secret_key_accessor.get_secret(version=key_version)
+
+        if is_key:
+            return (secret.encode("utf8"), version)
+
+        return (
             hashlib.pbkdf2_hmac(
-                InCrypto.PBKDF2_DIGEST,
-                secret.encode("utf8"),
-                salt,
-                InCrypto.PBKDF2_ROUNDS,
-                InCrypto.DERIVED_KEY_LENGTH,
+                InCrypto.PBKDF2_DIGEST, secret.encode("utf8"), salt, InCrypto.PBKDF2_ROUNDS, InCrypto.KEY_LENGTH,
             ),
             version,
-        ]
+        )
 
     def get_current_secret_version(self):
-        [secret, version] = self.secret_key_accessor.get_secret()
+        [secret, version, is_key] = self.secret_key_accessor.get_secret()
         return version
 
     def hash(self, data):

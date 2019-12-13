@@ -81,6 +81,31 @@ def test_enc_dec(plaintext, secret_key_accessor):
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
+@pytest.mark.parametrize(
+    "secret_key_accessor",
+    [
+        SecretKeyAccessor(
+            lambda: {
+                "currentVersion": 1,
+                "secrets": [
+                    {"secret": "password0", "version": 0},
+                    {"secret": "12345678901234567890123456789012", "version": 1, "isKey": True},
+                ],
+            }
+        )
+    ],
+)
+@pytest.mark.happy_path
+def test_enc_dec_with_key(plaintext, secret_key_accessor):
+    cipher = InCrypto(secret_key_accessor)
+
+    [enc, *rest] = cipher.encrypt(plaintext)
+    dec = cipher.decrypt(enc)
+
+    assert plaintext == dec
+
+
+@pytest.mark.parametrize("plaintext", PLAINTEXTS)
 @pytest.mark.happy_path
 def test_enc_without_secret_key_accessor(plaintext):
     cipher = InCrypto()
