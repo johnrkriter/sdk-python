@@ -86,7 +86,7 @@ Here is how data is transformed and stored in InCountry database:
 	range_key,    # plain
 	key2,         # hashed
 	key3          # hashed
- }
+}
 ```
 ### Reading stored data
 
@@ -119,12 +119,12 @@ This call returns all records with `key2` equals `kitty` AND `key3` equals `mew`
 The return object looks like the following:
 ```
 {
-	"data": [/* kitties */],
-	"meta": {
-		"limit": 10,
-		"offset": 10,
-		"total": 124     # total records matching filter, ignoring limit
-	}
+    "data": [/* kitties */],
+    "meta": {
+        "limit": 10,
+        "offset": 10,
+        "total": 124     # total records matching filter, ignoring limit
+    }
 }
 ```
 You can use the following types for filter parameters.
