@@ -15,5 +15,9 @@ install:
 
 script:
   - if [[ ($TRAVIS_BRANCH == "master") && ($TRAVIS_EVENT_TYPE == "cron") ]]; then snyk monitor --org=incountry; fi
-  - bandit --ini bandit.ini -r -o bandit.json -f json || true
+  - pipenv sync --dev
+  - pipenv run check-format
+  - pipenv run check-flake8
+  - pipenv run tests
+  - bandit --ini bandit.ini -r -o bandit.json -f json
   - sonar-scanner

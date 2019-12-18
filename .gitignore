@@ -5,3 +5,6 @@ incountry.egg-info
 *.pyc
 .idea
 bandit.json
+.coverage
+coverage.xml
+ut_coverage.xml
