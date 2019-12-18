@@ -70,7 +70,7 @@ record = storage.write(
     profile_key="string",  # Optional
     range_key=integer,     # Optional
     key2="string",         # Optional
-    key3="string"          # Optional
+    key3="string",         # Optional
 )
 
 # `write` returns created record on success
@@ -85,7 +85,7 @@ Here is how data is transformed and stored in InCountry database:
     profile_key,  # hashed
     range_key,    # plain
     key2,         # hashed
-    key3          # hashed
+    key3,         # hashed
 }
 ```
 ### Reading stored data
@@ -94,7 +94,7 @@ Stored record can be read by `key` using `readAsync` method. It accepts an objec
 ```python
 record = storage.read(
     country="string",      # Required country code
-    key="string"           # Required record key
+    key="string",          # Required record key
 )
 ```
 
@@ -123,7 +123,7 @@ The return object looks like the following:
     "meta": {
         "limit": 10,
         "offset": 10,
-        "total": 124     # total records matching filter, ignoring limit
+        "total": 124,  # total records matching filter, ignoring limit
     }
 }
 ```
@@ -138,7 +138,7 @@ key3=["mew", "purr"]
 ```
 `range_key` is a numeric field so you can use range filter requests, for example:
 ```python
-range_key={ "$lt": 1000 } # search for records with range_key < 1000
+range_key={"$lt": 1000} # search for records with range_key < 1000
 ```
 Available request options for `range_key`: `$lt`, `$lte`, `$gt`, `$gte`.
 
@@ -157,10 +157,10 @@ Use `deleteAsync` method in order to delete a record from InCountry storage. It 
 ```python
 storage.delete(
     country="string",      # Required country code
-    key="string"           # Required record key
+    key="string",          # Required record key
 )
 
-# delete will raise an Exception if fails
+# `delete` will raise an Exception if fails
 ```
 
 Testing Locally
