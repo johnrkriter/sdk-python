@@ -78,7 +78,7 @@ record = storage.write(
 #### Encryption
 InCountry uses client-side encryption for your data. Note that only body is encrypted. Some of other fields are hashed.
 Here is how data is transformed and stored in InCountry database:
-```
+```python
 {
     key,          # hashed
     body,         # encrypted
@@ -119,12 +119,12 @@ This call returns all records with `key2` equals `kitty` AND `key3` equals `mew`
 The return object looks like the following:
 ```python
 {
-    "data": [/* kitties */],
+    "data": [...],
     "meta": {
         "limit": 10,
         "offset": 10,
         "total": 124     # total records matching filter, ignoring limit
-	}
+    }
 }
 ```
 You can use the following types for filter parameters.
