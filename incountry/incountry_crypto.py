@@ -144,3 +144,4 @@ class InCrypto:
 
     def hash(self, data):
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
+

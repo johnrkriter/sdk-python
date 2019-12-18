@@ -6,3 +6,5 @@ incountry.egg-info
 .idea
 bandit.json
 .coverage
+coverage.xml
+ut_coverage.xml
