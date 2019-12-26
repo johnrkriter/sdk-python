@@ -17,7 +17,6 @@ setuptools = "*"
 wheel = "*"
 twine = "*"
 cryptography = "*"
-pytest_testrail = "*"
 jsonschema = "*"
 
 [requires]
@@ -26,5 +25,6 @@ python_version = "3.7"
 [scripts]
 integrations = "pytest -s -vv --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report xml:it_coverage.xml --cov-report term"
 test = "pytest -s -vv --ignore=tests/integration --rootdir=tests/unit --cov=incountry --cov-report xml:ut_coverage.xml --cov-report term"
+
 [pipenv]
 allow_prereleases = true

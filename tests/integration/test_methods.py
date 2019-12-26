@@ -4,13 +4,11 @@ import operator
 from incountry import StorageServerError, Storage
 import sure
 import pytest
-from pytest_testrail.plugin import pytestrail
 from typing import Dict, List, Any
 
 COUNTRIES = ["us", "in"]
 
 
-@pytestrail.case("C143")
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 @pytest.mark.parametrize(
     "data",
@@ -46,7 +44,6 @@ def test_write_record(
     write_response["record"].should.be.equal(data)
 
 
-@pytestrail.case("C144")
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 @pytest.mark.parametrize("country", COUNTRIES)
 def test_write_with_the_same_key_updates_record(
@@ -78,7 +75,6 @@ def test_write_with_the_same_key_updates_record(
     write_response["record"].should.be.equal(updated_record)
 
 
-@pytestrail.case("C147")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_read_record(encrypt: bool, storage: Storage, country: str
@@ -100,7 +96,6 @@ def test_read_record(encrypt: bool, storage: Storage, country: str
         read_response["record"][key].should.be.equal(record[key])
 
 
-@pytestrail.case("C148")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_read_not_existing_record(storage, country, encrypt):
@@ -108,7 +103,6 @@ def test_read_not_existing_record(storage, country, encrypt):
     storage.read.when.called_with(country=country, key=record_key).should.have.raised(StorageServerError)
 
 
-@pytestrail.case("C149")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_delete_record(storage, country, encrypt):
@@ -127,7 +121,6 @@ def test_delete_record(storage, country, encrypt):
     storage.read.when.called_with(country=country, key=key1).should.have.raised(StorageServerError)
 
 
-@pytestrail.case("C91397")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_delete_not_existing_record(storage, country, encrypt):
@@ -135,7 +128,6 @@ def test_delete_not_existing_record(storage, country, encrypt):
     storage.delete.when.called_with(country=country, key=record_key).should.have.raised(StorageServerError)
 
 
-@pytestrail.case("C91398")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_batch_write_records(storage, country, encrypt):
@@ -159,7 +151,6 @@ def test_batch_write_records(storage, country, encrypt):
         record.should.have.keys(["key", "key2", "key3", "profile_key", "range_key", "body"])
 
 
-@pytestrail.case("C91399")
 @pytest.mark.parametrize("update_by", ["key", "profile_key"], ids=["update by key", "update by profile key"])
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 @pytest.mark.parametrize("country", ["us"])
@@ -182,7 +173,6 @@ def test_update_one(
     find_updated_record["data"][0]["range_key"].should.be.equal(333)
 
 
-@pytestrail.case("C91400")
 # TODO: fix after payload is fixed: data->records https://incountry.atlassian.net/browse/EN-1563
 @pytest.mark.parametrize("key", ["key", "key2", "key3", "profile_key", "range_key"])
 @pytest.mark.parametrize(
@@ -203,7 +193,6 @@ def test_find_by_one_key(
     expected_keys.should.equal(actual_keys)
 
 
-@pytestrail.case("C91401")
 @pytest.mark.parametrize("key", ["key", "key2", "key3", "profile_key", "range_key"])
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
@@ -223,7 +212,6 @@ def test_find_by_list_of_keys(
     expected_keys.should.equal(actual_keys)
 
 
-@pytestrail.case("C91402")
 @pytest.mark.parametrize(
     "range_operator", ["$gt", "$lt", "$gte", "$lte"]
 )
@@ -259,7 +247,6 @@ def test_find_by_range_key_gt_lt(
                 assert op[range_operator](value, 0)
 
 
-@pytestrail.case("C91403")
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
@@ -272,7 +259,6 @@ def test_find_not_existing_record(
     find_nothing["meta"]["total"].should.be.equal(0)
 
 
-@pytestrail.case("C91404")
 @pytest.mark.parametrize("number_of_records", [10])
 @pytest.mark.parametrize(
     "limit", [1, 5, 10],
@@ -295,7 +281,6 @@ def test_find_limit_works(
     assert set(found_keys).issubset(set(record_keys))
 
 
-@pytestrail.case("C91405")
 @pytest.mark.parametrize("number_of_records", [10])
 @pytest.mark.parametrize(
     "offset", [0, 1, 5, 10],
@@ -319,7 +304,6 @@ def test_find_offset_works(
     assert set(found_keys).issubset(set(record_keys))
 
 
-@pytestrail.case("C91406")
 @pytest.mark.parametrize(
     "search_key", ["key", "profile_key", "range_key", "key2", "key3"]
 )
@@ -338,7 +322,6 @@ def test_find_one(
     find_one_record["record"][search_key].should.be.equal(expected_records[0][search_key])
 
 
-@pytestrail.case("C91407")
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
