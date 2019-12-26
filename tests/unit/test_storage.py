@@ -120,8 +120,9 @@ def test_batch_write(client, records, encrypt):
     batch_res["records"].should.be.equal(records)
 
     received_records = json.loads(httpretty.last_request().body)
+    received_records.should.have.key("records")
 
-    for received_record in received_records:
+    for received_record in received_records["records"]:
         original_record = next(
             (
                 item
@@ -421,7 +422,7 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
     assert migrate_res["migrated"] == len(stored_records)
 
     received_records = json.loads(httpretty.last_request().body)
-    for received_record in received_records:
+    for received_record in received_records["records"]:
         original_stored_record = next(
             (item for item in stored_records if item.get("key") == received_record.get("key")), None
         )
