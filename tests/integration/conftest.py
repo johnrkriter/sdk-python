@@ -2,7 +2,7 @@ from incountry import SecretKeyAccessor, Storage
 import os
 import pytest
 from random import randint
-from typing import Any, List, Dict
+from typing import List, Dict
 import uuid
 
 
@@ -14,12 +14,10 @@ def storage(encrypt: bool) -> Storage:
 
     if encrypt:
         storage = Storage(
-            encrypt=True, debug=True,
-            secret_key_accessor=secret_key_accessor
+            encrypt=True, debug=True, secret_key_accessor=secret_key_accessor
         )
     else:
-        storage = Storage(
-            encrypt=False, debug=True)
+        storage = Storage(encrypt=False, debug=True)
 
     yield storage
 
@@ -48,16 +46,11 @@ def expected_records(storage: Storage, country: str, number_of_records: int):
     data = create_records(number_of_records)
     for record in data:
         assert "key" in record.keys()
-        response = storage.write(
-            country=country, **record
-        )
+        response = storage.write(country=country, **record)
         assert response["record"]["key"] == record["key"]
-    try:
-        yield data
-    finally:
-        for record in data:
-            key = record["key"]
-            response = storage.delete(
-                country=country, key=key
-            )
-            assert response == {"success": True}
+    yield data
+
+    for record in data:
+        key = record["key"]
+        response = storage.delete(country=country, key=key)
+        assert response == {"success": True}
