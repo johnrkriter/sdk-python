@@ -107,7 +107,7 @@ class Storage(object):
         if existing_records_response["meta"]["total"] == 0:
             raise StorageServerError("Record not found")
 
-        updated_record = {**existing_records_response["data"][0], **record_kwargs}
+        updated_record = {**existing_records_response["records"][0], **record_kwargs}
 
         self.write(country=country, **updated_record)
 
@@ -135,12 +135,12 @@ class Storage(object):
 
         return {
             "meta": response["meta"],
-            "data": [self.decrypt_record(record) for record in response["data"]],
+            "records": [self.decrypt_record(record) for record in response["records"]],
         }
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
-        return {"record": result["data"][0]} if len(result["data"]) else None
+        return {"record": result["records"][0]} if len(result["records"]) else None
 
     def delete(self, country: str, key: str):
         country = country.lower()
@@ -156,7 +156,7 @@ class Storage(object):
 
         find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
 
-        self.batch_write(country=country, records=find_res["data"])
+        self.batch_write(country=country, records=find_res["records"])
 
         return {
             "migrated": find_res["meta"]["count"],
