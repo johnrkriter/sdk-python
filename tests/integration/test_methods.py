@@ -79,6 +79,7 @@ def test_write_with_the_same_key_updates_record(
     write_response["record"].should.be.equal(updated_record)
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]

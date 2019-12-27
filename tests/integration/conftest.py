@@ -5,19 +5,37 @@ from random import randint
 from typing import List, Dict
 import uuid
 
+API_KEY = os.environ.get("INT_INC_API_KEY")
+ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
+ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
+SECRETS_DATA = {
+    "secrets": [{"secret": "super secret", "version": 2}],
+    "currentVersion": 2,
+}
+
 
 @pytest.fixture
 def storage(encrypt: bool) -> Storage:
     """Creating storage"""
-    password = os.environ.get("PASSWORD")
-    secret_key_accessor = SecretKeyAccessor(lambda: password)
+    secret_key_accessor = SecretKeyAccessor(lambda: SECRETS_DATA)
 
     if encrypt:
         storage = Storage(
-            encrypt=True, debug=True, secret_key_accessor=secret_key_accessor
+            encrypt=True,
+            debug=True,
+            api_key=API_KEY,
+            environment_id=ENVIRONMENT_ID,
+            endpoint=ENDPOINT,
+            secret_key_accessor=secret_key_accessor,
         )
     else:
-        storage = Storage(encrypt=False, debug=True)
+        storage = Storage(
+            encrypt=False,
+            debug=True,
+            api_key=API_KEY,
+            environment_id=ENVIRONMENT_ID,
+            endpoint=ENDPOINT,
+        )
 
     yield storage
 
