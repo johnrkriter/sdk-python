@@ -79,7 +79,7 @@ def test_write_with_the_same_key_updates_record(
     write_response["record"].should.be.equal(updated_record)
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(Reason="See issue EN-1872")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
@@ -115,6 +115,7 @@ def test_read_not_existing_record(
     ).should.have.raised(StorageServerError)
 
 
+@pytest.mark.xfail(Reason="See issue EN-1872")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
@@ -205,13 +206,10 @@ def test_update_one(
     updated_sample["record"]["range_key"].should.be.equal(333)
 
     find_updated_record = storage.find(country=country, key=record["key"])
-    len(find_updated_record["data"]).should.be.equal(
-        1
-    )  # TODO: fix after payload is fixed: data->records
-    find_updated_record["data"][0]["range_key"].should.be.equal(333)
+    len(find_updated_record["records"]).should.be.equal(1)
+    find_updated_record["records"][0]["range_key"].should.be.equal(333)
 
 
-# TODO: fix: data->records after https://incountry.atlassian.net/browse/EN-1563
 @pytest.mark.parametrize(
     "key", ["key", "key2", "key3", "profile_key", "range_key"]
 )
@@ -230,9 +228,9 @@ def test_find_by_one_key(
     search = {key: key_value}
     find_result = storage.find(country=country, **search)
     find_result.should.be.a("dict")
-    find_result.should.have.key("data")  # TODO: fix after payload is fixed
+    find_result.should.have.key("records")
     find_result.should.have.key("meta")
-    actual_keys = [record[key] for record in find_result["data"]]
+    actual_keys = [record[key] for record in find_result["records"]]
     expected_keys = [
         record[key] for record in expected_records if record[key] == key_value
     ]
@@ -257,9 +255,9 @@ def test_find_by_list_of_keys(
     search = {key: key_values}
     find_result = storage.find(country=country, **search)
     find_result.should.be.a("dict")
-    find_result.should.have.key("data")  # TODO: fix after payload is fixed
+    find_result.should.have.key("records")
     find_result.should.have.key("meta")
-    actual_keys = {record[key] for record in find_result["data"]}
+    actual_keys = {record[key] for record in find_result["records"]}
     expected_keys = {record[key] for record in expected_records}
     expected_keys.should.equal(actual_keys)
 
@@ -289,9 +287,7 @@ def test_find_by_range_key_gt_lt(
         "$lt": operator.lt,
         "$lte": operator.le,
     }
-    actual_records = find_result[
-        "data"
-    ]  # TODO: change data to records once there is fix
+    actual_records = find_result["records"]
     len(actual_records).should.be.greater_than(0)
     for _ in actual_records:
         for _, value in record.items():
@@ -307,9 +303,7 @@ def test_find_not_existing_record(
     storage: Storage, encrypt: bool, country: str
 ) -> None:
     find_nothing = storage.find(country=country, key="Not existing key")
-    len(find_nothing["data"]).should.be.equal(
-        0
-    )  # TODO: fix after payload is fixed: data->records
+    len(find_nothing["records"]).should.be.equal(0)
     find_nothing["meta"]["total"].should.be.equal(0)
 
 
@@ -333,11 +327,8 @@ def test_find_limit_works(
 
     find_limit = storage.find(country=country, key=record_keys, limit=limit)
     find_limit["meta"]["limit"].should.be.equal(limit)
-    len(find_limit["data"]).should.be.equal(
-        limit
-    )  # TODO: fix after payload is fixed: data->records
-
-    found_keys = [record["key"] for record in find_limit["data"]]
+    len(find_limit["records"]).should.be.equal(limit)
+    found_keys = [record["key"] for record in find_limit["records"]]
     assert set(found_keys).issubset(set(record_keys))
 
 
@@ -363,12 +354,9 @@ def test_find_offset_works(
     remains_after_offset = max(10 - offset, 0)
 
     find_offset = storage.find(country=country, key=record_keys, offset=offset)
-    len(find_offset["data"]).should.be.equal(
-        remains_after_offset
-    )  # TODO: fix after payload is fixed: data->records
+    len(find_offset["records"]).should.be.equal(remains_after_offset)
     find_offset["meta"]["offset"].should.be.equal(offset)
-
-    found_keys = [record["key"] for record in find_offset["data"]]
+    found_keys = [record["key"] for record in find_offset["records"]]
     assert set(found_keys).issubset(set(record_keys))
 
 

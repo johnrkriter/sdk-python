@@ -27,7 +27,7 @@ def test_migrate_should_raise_error_without_encryption(
     )
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(Reason="Works only for storage with encrypted records")
 @pytest.mark.parametrize("encrypt", [True], ids=["encrypted"])
 @pytest.mark.parametrize("country", ["us"])
 def test_migrate_works_with_encryption(
