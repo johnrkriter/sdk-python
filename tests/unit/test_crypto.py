@@ -18,7 +18,6 @@ PLAINTEXTS = [
 
 PREPARED_DATA_BY_VERSION = {
     "pt": [(("pt:SW5Db3VudHJ5"), "InCountry", "")],
-    "0": [(("7765618db31daf5366a6fc3520010327"), "InCountry", "password")],
     "1": [
         (
             (
@@ -164,10 +163,7 @@ def test_dec_non_pt_without_secret_key_accessor(ciphertext, plaintext, password)
     cipher = InCrypto()
 
     dec = cipher.decrypt(ciphertext)
-    if ":" in ciphertext:
-        assert dec == ciphertext.split(":")[1]
-    else:
-        assert dec == ciphertext
+    assert dec == ciphertext.split(":")[1]
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
@@ -192,15 +188,6 @@ def test_dec_vPT_no_b64(ciphertext, plaintext, password):
     cipher.decrypt.when.called_with(ciphertext + ":").should.have.raised(InCryptoException)
 
 
-@pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["0"])
-@pytest.mark.error_path
-def test_dec_v0_wrong_padding(ciphertext, plaintext, password):
-    secret_accessor = SecretKeyAccessor(lambda: password)
-    cipher = InCrypto(secret_accessor)
-
-    cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
-
-
 @pytest.mark.parametrize("ciphertext, plaintext, password", PREPARED_DATA_BY_VERSION["1"])
 @pytest.mark.error_path
 def test_dec_v1_wrong_auth_tag(ciphertext, plaintext, password):
@@ -219,7 +206,7 @@ def test_dec_v2_wrong_auth_tag(ciphertext, plaintext, password):
     cipher.decrypt.when.called_with(ciphertext[:-2]).should.have.raised(InCryptoException)
 
 
-@pytest.mark.parametrize("ciphertext", ["unsupported_version:abc", "some:unsupported:data"])
+@pytest.mark.parametrize("ciphertext", ["unsupported_version:abc", "some:unsupported:data", "7765618db31daf5366a6fc3520010327"])
 @pytest.mark.error_path
 def test_wrong_ciphertext(ciphertext):
     secret_accessor = SecretKeyAccessor(lambda: "password")
