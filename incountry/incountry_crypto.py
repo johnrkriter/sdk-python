@@ -47,8 +47,6 @@ class InCrypto:
             return self.decrypt_pt
         if self.secret_key_accessor is None:
             return self.decrypt_stub
-        if enc_version == "0":
-            return self.decrypt_v0
         if enc_version == "1":
             return self.decrypt_v1
         if enc_version == "2":
@@ -81,14 +79,10 @@ class InCrypto:
     def decrypt(self, enc, key_version=None):
         parts = enc.split(":")
 
-        if len(parts) > 2:
+        if len(parts) != 2:
             raise InCryptoException("Invalid ciphertext")
 
-        enc_version = "0"
-        packed_enc = enc
-
-        if len(parts) == 2:
-            [enc_version, packed_enc] = parts
+        [enc_version, packed_enc] = parts
 
         decryptor = self.__get_decryptor(enc_version)
 
@@ -102,20 +96,6 @@ class InCrypto:
 
     def decrypt_stub(self, enc, key_version=None):
         return enc
-
-    def decrypt_v0(self, enc, key_version):
-        [secret, *rest] = self.secret_key_accessor.get_secret(version=key_version)
-        secret_bytes = hashlib.sha256(secret.encode("utf-8")).hexdigest()
-        salt = bytes.fromhex(secret_bytes)
-        key = salt[0:16]
-        iv = salt[16:32]
-
-        def unpad(data):
-            return data[: -ord(data[len(data) - 1 :])]
-
-        enc = bytes.fromhex(enc)
-        decryptor = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend()).decryptor()
-        return unpad(decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
     def decrypt_v1(self, packed_enc, key_version):
         b_data = bytes.fromhex(packed_enc)
