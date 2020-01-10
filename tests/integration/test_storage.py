@@ -9,6 +9,7 @@ from incountry import SecretKeyAccessor, Storage, StorageServerError
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
+COUNTRY = os.environ.get("INT_INC_COUNTRY")
 SECRETS_DATA = {
     "secrets": [{"secret": "supersecret", "version": 2}],
     "currentVersion": 2,
@@ -31,8 +32,8 @@ def client():
 @pytestrail.case("C143")
 def test_write_single_pop(client):
     key1 = uuid.uuid4().hex
-    client.write(country="us", key=key1)
-    r = client.read(country="us", key=key1)
+    client.write(country=COUNTRY, key=key1)
+    r = client.read(country=COUNTRY, key=key1)
     r.should.have.key("record")
     r["record"].should.have.key("version")
     r["record"].should.have.key("key")
@@ -44,14 +45,14 @@ def test_read_single_pop(client):
     key1 = uuid.uuid4().hex
     key2 = uuid.uuid4().hex
 
-    client.write(country="us", key=key1, body="Welcome to Florence")
-    client.write(country="us", key=key2, body="Welcome to Rome")
+    client.write(country=COUNTRY, key=key1, body="Welcome to Florence")
+    client.write(country=COUNTRY, key=key2, body="Welcome to Rome")
 
-    r = client.read(country="us", key=key1)
+    r = client.read(country=COUNTRY, key=key1)
     r.should.have.key("record")
     assert r["record"]["body"] == "Welcome to Florence"
 
-    r = client.read(country="us", key=key2)
+    r = client.read(country=COUNTRY, key=key2)
     r.should.have.key("record")
     assert r["record"]["body"] == "Welcome to Rome"
 
@@ -60,13 +61,13 @@ def test_read_single_pop(client):
 def test_delete_single_pop(client):
     key1 = uuid.uuid4().hex
 
-    client.write(country="us", key=key1, body="Konichiwa")
-    r = client.read(country="us", key=key1)
+    client.write(country=COUNTRY, key=key1, body="Konichiwa")
+    r = client.read(country=COUNTRY, key=key1)
     assert r is not None
 
-    client.delete(country="us", key=key1)
+    client.delete(country=COUNTRY, key=key1)
 
-    client.read.when.called_with(country="us", key=key1).should.throw(StorageServerError)
+    client.read.when.called_with(country=COUNTRY, key=key1).should.throw(StorageServerError)
 
 
 @pytestrail.case("C148")
@@ -81,7 +82,7 @@ def test_using_encryption():
         encrypt=True,
         secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
     )
-    eclient.write(country="us", key=key1, body="You cant read this text")
+    eclient.write(country=COUNTRY, key=key1, body="You cant read this text")
 
     client = Storage(
         api_key=API_KEY,
@@ -90,10 +91,10 @@ def test_using_encryption():
         encrypt=False,
         secret_key_accessor=SecretKeyAccessor(lambda: SECRETS_DATA),
     )
-    client.write(country="us", key=key2, body="You CAN read this text")
+    client.write(country=COUNTRY, key=key2, body="You CAN read this text")
 
-    r = eclient.read(country="us", key=key1)
+    r = eclient.read(country=COUNTRY, key=key1)
     assert r["record"]["body"] == "You cant read this text"
 
-    r = client.read(country="us", key=key2)
+    r = client.read(country=COUNTRY, key=key2)
     assert r["record"]["body"] == "You CAN read this text"

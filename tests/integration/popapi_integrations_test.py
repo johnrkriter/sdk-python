@@ -8,6 +8,7 @@ import uuid
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
+COUNTRY = os.environ.get("INT_INC_COUNTRY")
 SECRETS_DATA = {
     "secrets": [{"secret": "supersecret", "version": 2}],
     "currentVersion": 2,
@@ -27,7 +28,7 @@ def test_e2e():
 
     # This pattern will be useful for parameterized tests when we are ready for them
     test_case = {
-        "country": "us",
+        "country": COUNTRY,
         "key": uuid.uuid4().hex,
         "body": "test",
     }
