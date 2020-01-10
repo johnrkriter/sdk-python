@@ -283,7 +283,7 @@ def test_find(client, query, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(enc_data)}, "records": enc_data}),
+        body=json.dumps({"meta": {"total": len(enc_data)}, "data": enc_data}),
     )
 
     find_response = client(encrypt).find(country=COUNTRY, **query)
@@ -328,7 +328,7 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(stored_data)}, "records": stored_data}),
+        body=json.dumps({"meta": {"total": len(stored_data)}, "data": stored_data}),
     )
 
     find_response = client(encrypt).find(country=COUNTRY, **query)
@@ -372,7 +372,7 @@ def test_find_one(client, query, record, encrypt):
         body=json.dumps(
             {
                 "meta": {"total": 0 if stored_record is None else 1},
-                "records": [] if stored_record is None else [stored_record],
+                "data": [] if stored_record is None else [stored_record],
             }
         ),
     )
@@ -411,7 +411,7 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": total_stored, "count": len(stored_records)}, "records": stored_records}),
+        body=json.dumps({"meta": {"total": total_stored, "count": len(stored_records)}, "data": stored_records}),
     )
 
     httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite")
@@ -452,7 +452,7 @@ def test_update(client, record, update_key, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": 1}, "records": [stored_record]}),
+        body=json.dumps({"meta": {"total": 1}, "data": [stored_record]}),
     )
 
     data_for_update = dict(
@@ -556,7 +556,7 @@ def test_find_error(client, query):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": 0}, "records": []}),
+        body=json.dumps({"meta": {"total": 0}, "data": []}),
     )
 
     client().find.when.called_with(country=COUNTRY, **query).should.have.raised(StorageClientError)
@@ -572,7 +572,7 @@ def test_update_error(client, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(enc_data)}, "records": enc_data}),
+        body=json.dumps({"meta": {"total": len(enc_data)}, "data": enc_data}),
     )
 
     client(encrypt).update_one.when.called_with(
