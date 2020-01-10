@@ -92,7 +92,7 @@ class Storage(object):
             raise StorageClientError("Invalid records for batch_write") from e
 
         encrypted_records = [self.encrypt_record(record) if self.encrypt else record for record in records]
-        data_to_send = {"records": encrypted_records} 
+        data_to_send = {"records": encrypted_records}
 
         self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
 
@@ -136,7 +136,7 @@ class Storage(object):
 
         return {
             "meta": response["meta"],
-            "records": [self.decrypt_record(record) for record in response["records"]],
+            "records": [self.decrypt_record(record) for record in response["data"]],
         }
 
     def find_one(self, offset=0, **kwargs):
