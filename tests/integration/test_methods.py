@@ -6,7 +6,7 @@ import sure
 import pytest
 from typing import Dict, List, Any
 
-COUNTRIES = ["us", "in"]
+COUNTRIES = ["se"]
 
 
 @pytest.mark.parametrize(
@@ -79,7 +79,6 @@ def test_write_with_the_same_key_updates_record(
     write_response["record"].should.be.equal(updated_record)
 
 
-@pytest.mark.xfail(Reason="See issue EN-1872")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
@@ -115,7 +114,6 @@ def test_read_not_existing_record(
     ).should.have.raised(StorageServerError)
 
 
-@pytest.mark.xfail(Reason="See issue EN-1872")
 @pytest.mark.parametrize("country", COUNTRIES)
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
@@ -190,7 +188,7 @@ def test_batch_write_records(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_update_one(
     storage: Storage, encrypt: bool, update_by: str, country: str
 ) -> None:
@@ -216,7 +214,7 @@ def test_update_one(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_by_one_key(
     storage: Storage,
     encrypt: bool,
@@ -243,7 +241,7 @@ def test_find_by_one_key(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_by_list_of_keys(
     storage: Storage,
     encrypt: bool,
@@ -266,7 +264,7 @@ def test_find_by_list_of_keys(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_by_range_key_gt_lt(
     storage: Storage, encrypt: bool, country: str, range_operator: str
 ) -> None:
@@ -298,7 +296,7 @@ def test_find_by_range_key_gt_lt(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_not_existing_record(
     storage: Storage, encrypt: bool, country: str
 ) -> None:
@@ -314,7 +312,7 @@ def test_find_not_existing_record(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_limit_works(
     encrypt: bool,
     storage: Storage,
@@ -341,7 +339,7 @@ def test_find_limit_works(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_offset_works(
     encrypt: bool,
     storage: Storage,
@@ -366,7 +364,7 @@ def test_find_offset_works(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_one(
     storage: Storage,
     encrypt: bool,
@@ -387,7 +385,7 @@ def test_find_one(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_find_one_empty_response(
     storage: Storage, encrypt: bool, country: str
 ) -> None:

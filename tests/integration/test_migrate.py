@@ -13,10 +13,11 @@ from incountry import (
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENV_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
+COUNTRIES = ["se"]
 
 
 @pytest.mark.parametrize("encrypt", [False], ids=["not encrypted"])
-@pytest.mark.parametrize("country", ["us", "in"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_migrate_should_raise_error_without_encryption(
     storage: Storage, encrypt: bool, country: str
 ) -> None:
@@ -29,7 +30,7 @@ def test_migrate_should_raise_error_without_encryption(
 
 @pytest.mark.xfail(Reason="Works only for storage with encrypted records")
 @pytest.mark.parametrize("encrypt", [True], ids=["encrypted"])
-@pytest.mark.parametrize("country", ["us"])
+@pytest.mark.parametrize("country", COUNTRIES)
 def test_migrate_works_with_encryption(
     storage: Storage, encrypt: bool, country: str, expected_records: List[Dict]
 ) -> None:
