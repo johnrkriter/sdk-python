@@ -125,7 +125,7 @@ class Storage(object):
             raise StorageClientError("limit should be an integer >= 0 and <= %s" % self.FIND_LIMIT)
 
         if not isinstance(offset, int) or offset < 0:
-            raise StorageClientError("offset should be an integer >= 0")
+            raise StorageClientError("limit should be an integer >= 0")
 
         filter_params = self.prepare_filter_params(**filter_kwargs)
         options = {"limit": limit, "offset": offset}
