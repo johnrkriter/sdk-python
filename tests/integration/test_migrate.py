@@ -13,16 +13,15 @@ from incountry import (
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENV_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
-COUNTRIES = ["se"]
+COUNTRY = os.environ.get("INT_INC_COUNTRY")
 
 
 @pytest.mark.parametrize("encrypt", [False], ids=["not encrypted"])
-@pytest.mark.parametrize("country", COUNTRIES)
 def test_migrate_should_raise_error_without_encryption(
-    storage: Storage, encrypt: bool, country: str
+    storage: Storage, encrypt: bool,
 ) -> None:
 
-    storage.migrate.when.called_with(country).should.have.raised(
+    storage.migrate.when.called_with(COUNTRY).should.have.raised(
         StorageClientError,
         re.compile(r"Migration not supported when encryption is off"),
     )
@@ -30,12 +29,11 @@ def test_migrate_should_raise_error_without_encryption(
 
 @pytest.mark.xfail(Reason="Works only for storage with encrypted records")
 @pytest.mark.parametrize("encrypt", [True], ids=["encrypted"])
-@pytest.mark.parametrize("country", COUNTRIES)
 def test_migrate_works_with_encryption(
-    storage: Storage, encrypt: bool, country: str, expected_records: List[Dict]
+    storage: Storage, encrypt: bool, expected_records: List[Dict]
 ) -> None:
     keys = {record["key"] for record in expected_records}
-    find_all = storage.find(country=country)
+    find_all = storage.find(country=COUNTRY)
     all_records = find_all["meta"]["total"]
 
     # There are records with ver 2, let's create storage with different version
@@ -55,7 +53,7 @@ def test_migrate_works_with_encryption(
         secret_key_accessor=SecretKeyAccessor(lambda: secrets_data),
     )
 
-    migration_result = new_storage.migrate(country=country)
+    migration_result = new_storage.migrate(country=COUNTRY)
     migration_result.should.have.key("migrated")
     migration_result.should.have.key("total_left")
     migration_result["migrated"].should.be.a("int")
@@ -64,13 +62,13 @@ def test_migrate_works_with_encryption(
         migration_result["migrated"]
     )
 
-    nothing_lost = new_storage.find(country=country)
+    nothing_lost = new_storage.find(country=COUNTRY)
     found_keys = {record["key"] for record in nothing_lost["data"]}
     keys.should.be.equal(found_keys)
     nothing_lost["meta"]["total"].should.be.equal(all_records)
 
     read_record = new_storage.read(
-        country=country, key=expected_records[0]["key"]
+        country=COUNTRY, key=expected_records[0]["key"]
     )
     for key in expected_records[0]:
         read_record["record"][key].should.be.equal(expected_records[0][key])
@@ -78,5 +76,5 @@ def test_migrate_works_with_encryption(
         secrets_data["currentVersion"]
     )
     storage.read.when.called_with(
-        country=country, key=expected_records[0]["key"]
+        country=COUNTRY, key=expected_records[0]["key"]
     ).should.have.raised(StorageServerError)

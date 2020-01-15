@@ -2,12 +2,13 @@ from incountry import SecretKeyAccessor, Storage
 import os
 import pytest
 from random import randint
-from typing import List, Dict
+from typing import Any, List, Dict, Generator
 import uuid
 
 API_KEY = os.environ.get("INT_INC_API_KEY")
 ENVIRONMENT_ID = os.environ.get("INT_INC_ENVIRONMENT_ID")
 ENDPOINT = os.environ.get("INT_INC_ENDPOINT")
+COUNTRY = os.environ.get("INT_INC_COUNTRY")
 SECRETS_DATA = {
     "secrets": [{"secret": "super secret", "version": 2}],
     "currentVersion": 2,
@@ -60,7 +61,9 @@ def number_of_records() -> int:
 
 
 @pytest.fixture
-def expected_records(storage: Storage, country: str, number_of_records: int):
+def expected_records(
+    storage: Storage, number_of_records: int, country: str = COUNTRY
+) -> Generator[List[Dict[str, Any]], None, None]:
     data = create_records(number_of_records)
     for record in data:
         assert "key" in record.keys()
