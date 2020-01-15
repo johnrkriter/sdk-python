@@ -121,8 +121,8 @@ class Storage(object):
         return self.decrypt_record(data)
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
-        if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
-            raise StorageClientError("limit should be an integer >= 0 and <= %s" % self.FIND_LIMIT)
+        if not isinstance(limit, int) or limit <= 0 or limit > self.FIND_LIMIT:
+            raise StorageClientError("limit should be an integer > 0 and <= %s" % self.FIND_LIMIT)
 
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")

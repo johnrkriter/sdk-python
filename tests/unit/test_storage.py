@@ -357,7 +357,13 @@ def test_custom_endpoint(client, record, country):
 
 @httpretty.activate
 @pytest.mark.parametrize(
-    "query", [{"key": "key1", "limit": -1}, {"key": "key1", "limit": 101}, {"key": "key1", "limit": 1, "offset": -1}],
+    "query",
+    [
+        {"key": "key1", "limit": 0},
+        {"key": "key1", "limit": -1},
+        {"key": "key1", "limit": 101},
+        {"key": "key1", "limit": 1, "offset": -1},
+    ],
 )
 @pytest.mark.error_path
 def test_find_error(client, query):
