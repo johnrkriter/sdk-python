@@ -226,6 +226,42 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
 
 @httpretty.activate
 @pytest.mark.parametrize(
+    "query,records", [({"key": "key1"}, TEST_RECORDS)],
+)
+@pytest.mark.parametrize("encrypt", [True, False])
+@pytest.mark.happy_path
+def test_find_incorrect_records(client, query, records, encrypt):
+    incorrect_records = [{"key": str(uuid.uuid1()), "body": "Something weird here"} for i in range(4)]
+    enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
+    stored_data = enc_data + incorrect_records
+
+    httpretty.register_uri(
+        httpretty.POST,
+        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
+        body=json.dumps({"meta": {"total": len(stored_data)}, "data": stored_data}),
+    )
+
+    find_response = client(encrypt).find(country=COUNTRY, **query)
+
+    find_response["meta"]["total"].should.equal(len(stored_data))
+    find_response.should.have.key("data")
+    find_response["data"].should.be.a(list)
+
+    if encrypt:
+        len(find_response["data"]).should.equal(len(enc_data))
+        find_response.should.have.key("errors")
+        find_response["errors"].should.be.a(list)
+        len(find_response["errors"]).should.equal(len(incorrect_records))
+        for rec in find_response["errors"]:
+            rec.should.have.key("rawData")
+            rec.should.have.key("error")
+    else:
+        len(find_response["data"]).should.equal(len(stored_data))
+        find_response.should_not.have.key("errors")
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
     "query,record",
     [
         ({"key": "key1"}, {"country": COUNTRY, "key": "key1"}),
