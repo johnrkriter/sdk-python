@@ -218,10 +218,13 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
         else:
             encrypted_records_received.append(data_record)
 
+    assert len(encrypted_records_received) == 0
     if encrypt:
-        assert len(encrypted_records_received) == 0
+        assert len(find_response.get("data")) == len(records)
+        assert find_response.get("errors", None) == None
     else:
-        assert len(encrypted_records_received) == len(records_to_enc)
+        assert len(find_response.get("data")) == len(records_to_not_enc)
+        assert len(find_response.get("errors")) == len(records_to_enc)
 
 
 @httpretty.activate
@@ -231,7 +234,7 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_find_incorrect_records(client, query, records, encrypt):
-    incorrect_records = [{"key": str(uuid.uuid1()), "body": "Something weird here"} for i in range(4)]
+    incorrect_records = [{"key": str(uuid.uuid1()), "body": "2:Something weird here"} for i in range(4)]
     enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
     stored_data = enc_data + incorrect_records
 
@@ -247,17 +250,13 @@ def test_find_incorrect_records(client, query, records, encrypt):
     find_response.should.have.key("data")
     find_response["data"].should.be.a(list)
 
-    if encrypt:
-        len(find_response["data"]).should.equal(len(enc_data))
-        find_response.should.have.key("errors")
-        find_response["errors"].should.be.a(list)
-        len(find_response["errors"]).should.equal(len(incorrect_records))
-        for rec in find_response["errors"]:
-            rec.should.have.key("rawData")
-            rec.should.have.key("error")
-    else:
-        len(find_response["data"]).should.equal(len(stored_data))
-        find_response.should_not.have.key("errors")
+    len(find_response["data"]).should.equal(len(enc_data))
+    find_response.should.have.key("errors")
+    find_response["errors"].should.be.a(list)
+    len(find_response["errors"]).should.equal(len(incorrect_records))
+    for rec in find_response["errors"]:
+        rec.should.have.key("rawData")
+        rec.should.have.key("error")
 
 
 @httpretty.activate

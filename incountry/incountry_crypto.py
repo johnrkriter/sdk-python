@@ -45,7 +45,7 @@ class InCrypto:
         if version == self.PT_ENC_VERSION:
             return self.decrypt_pt
         if self.secret_key_accessor is None:
-            return self.decrypt_stub
+            raise InCryptoException("No secret_key_accessor provided. Cannot decrypt encrypted data")
         if version == "0":
             return self.decrypt_v0
         if version == "1":
@@ -92,9 +92,6 @@ class InCrypto:
 
     def decrypt_pt(self, enc):
         return base64.b64decode(enc).decode("utf8")
-
-    def decrypt_stub(self, enc):
-        return enc
 
     def decrypt_v0(self, enc):
         secret = self.secret_key_accessor.get_secret()
