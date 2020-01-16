@@ -221,7 +221,7 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
     assert len(encrypted_records_received) == 0
     if encrypt:
         assert len(find_response.get("data")) == len(records)
-        assert find_response.get("errors", None) == None
+        assert find_response.get("errors", None) is None
     else:
         assert len(find_response.get("data")) == len(records_to_not_enc)
         assert len(find_response.get("errors")) == len(records_to_enc)
