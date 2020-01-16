@@ -122,12 +122,9 @@ def test_hash():
 @pytest.mark.happy_path
 def test_dec_non_pt_without_secret_key_accessor(ciphertext, plaintext, password):
     cipher = InCrypto()
-
-    dec = cipher.decrypt(ciphertext)
-    if ":" in ciphertext:
-        assert dec == ciphertext.split(":")[1]
-    else:
-        assert dec == ciphertext
+    cipher.decrypt.when.called_with(ciphertext).should.have.raised(
+        InCryptoException, "No secret_key_accessor provided. Cannot decrypt encrypted data"
+    )
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
