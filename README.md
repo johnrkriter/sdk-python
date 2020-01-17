@@ -141,11 +141,11 @@ Available request options for `range_key`: `$lt`, `$lte`, `$gt`, `$gte`.
 
 You can search by any keys: `key`, `key2`, `key3`, `profile_key`, `range_key`.
 
-#### Errors handling
+#### Error handling
 
 There could be a situation when `find` method will receive records that could not be decrypted.
-For example it could be caused changing of encryption key or occurrence of encrypted records while searching with encryption disabled.
-In such case these records will be returned in `errors` array, and the `find()` call result will be the following:
+For example, if one changed the encryption key while the found data is encrypted with the older version of that key.
+In such cases find() method return data will be as follows:
 
 ```python
 {
