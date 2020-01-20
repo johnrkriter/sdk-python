@@ -23,7 +23,7 @@ AUTHOR = "InCountry"
 REQUIRES_PYTHON = ">=3.6.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["requests", "cryptography"]
+REQUIRED = ["requests", "cryptography", "jsonschema"]
 
 # What packages are optional?
 EXTRAS = {
@@ -88,6 +88,7 @@ class UploadCommand(Command):
         os.system("git push --tags")
 
         sys.exit()
+
 
 # Where the magic happens:
 setup(
