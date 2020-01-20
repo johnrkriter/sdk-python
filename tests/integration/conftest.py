@@ -2,7 +2,7 @@ from incountry import SecretKeyAccessor, Storage
 import os
 import pytest
 from random import randint
-from typing import Any, List, Dict, Generator
+from typing import Any, List, Dict, Generator, Union
 import uuid
 
 API_KEY = os.environ.get("INT_INC_API_KEY")
@@ -75,3 +75,17 @@ def expected_records(
         key = record["key"]
         response = storage.delete(country=country, key=key)
         assert response == {"success": True}
+
+
+@pytest.fixture
+def clean_up_records(
+    storage: Storage, key: Union[List[str], str], country: str = COUNTRY
+) -> Generator[None, None, None]:
+    yield
+    if isinstance(key, list):
+        for k in key:
+            deletion = storage.delete(country=country, key=k)
+            assert deletion == {"success": True}
+    elif isinstance(key, str):
+        deletion = storage.delete(country=country, key=key)
+        assert deletion == {"success": True}

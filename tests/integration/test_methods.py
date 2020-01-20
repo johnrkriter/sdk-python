@@ -17,19 +17,14 @@ COUNTRY = os.environ.get("INT_INC_COUNTRY")
     "data",
     [
         {
-            "key": uuid.uuid4().hex,
             "body": uuid.uuid4().hex,
             "profile_key": uuid.uuid4().hex,
             "range_key": randint(-(2 ** 63), 2 ** 62),
             "key2": uuid.uuid4().hex,
             "key3": uuid.uuid4().hex,
         },
-        {
-            "key": uuid.uuid4().hex,
-            "body": uuid.uuid4().hex,
-            "profile_key": uuid.uuid4().hex,
-        },
-        {"key": uuid.uuid4().hex},
+        {"body": uuid.uuid4().hex, "profile_key": uuid.uuid4().hex,},
+        {},
     ],
     ids=[
         "all the fields in record",
@@ -37,9 +32,15 @@ COUNTRY = os.environ.get("INT_INC_COUNTRY")
         "only key in record",
     ],
 )
+@pytest.mark.parametrize("key", [uuid.uuid4().hex])
 def test_write_record(
-    storage: Storage, encrypt: bool, data: Dict[str, Any]
+    storage: Storage,
+    encrypt: bool,
+    data: Dict[str, Any],
+    key: str,
+    clean_up_records: None,
 ) -> None:
+    data["key"] = key
     write_response = storage.write(country=COUNTRY, **data)
     write_response.should_not.be.none
     write_response.should.have.key("record")
@@ -49,12 +50,12 @@ def test_write_record(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
+@pytest.mark.parametrize("key", [uuid.uuid4().hex])
 def test_write_with_the_same_key_updates_record(
-    storage: Storage, encrypt: bool
+    storage: Storage, encrypt: bool, key: str, clean_up_records: None
 ) -> None:
-    record_key = uuid.uuid4().hex
     record = {
-        "key": record_key,
+        "key": key,
         "key2": "some key2",
         "key3": "some key3",
         "profile_key": "some profile_key",
@@ -65,7 +66,7 @@ def test_write_with_the_same_key_updates_record(
     write_response["record"].should.be.equal(record)
 
     updated_record = {
-        "key": record_key,
+        "key": key,
         "key2": "new key2",
         "key3": "new key3",
         "profile_key": "new profile_key",
@@ -81,9 +82,12 @@ def test_write_with_the_same_key_updates_record(
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-def test_read_record(storage: Storage, encrypt: bool) -> None:
+@pytest.mark.parametrize("key", [uuid.uuid4().hex])
+def test_read_record(
+    storage: Storage, encrypt: bool, key: str, clean_up_records: None
+) -> None:
     record = {
-        "key": "unique key",
+        "key": key,
         "key2": "some key2",
         "key3": "some key3",
         "profile_key": "some profile_key",
@@ -92,11 +96,11 @@ def test_read_record(storage: Storage, encrypt: bool) -> None:
     }
     storage.write(country=COUNTRY, **record)
 
-    read_response = storage.read(country=COUNTRY, key=record["key"])
+    read_response = storage.read(country=COUNTRY, key=key)
     read_response.should.be.a("dict")
     read_response.should.have.key("record")
-    for key in record:
-        read_response["record"][key].should.be.equal(record[key])
+    for field in record:
+        read_response["record"][field].should.be.equal(record[field])
 
 
 @pytest.mark.parametrize(
@@ -140,25 +144,24 @@ def test_delete_not_existing_record(storage: Storage, encrypt: bool) -> None:
     ).should.have.raised(StorageServerError)
 
 
+@pytest.mark.xfail(Reason="https://incountry.atlassian.net/browse/EN-2026")
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-def test_batch_write_records(storage: Storage, encrypt: bool) -> None:
+@pytest.mark.parametrize("key", [[uuid.uuid4().hex for _ in range(3)]])
+def test_batch_write_records(
+    storage: Storage, encrypt: bool, key: List[str], clean_up_records: None
+) -> None:
     records = [
         {
-            key: uuid.uuid4().hex
-            if key != "range_key"
-            else randint(-(2 ** 63), 2 ** 63 - 1)
-            for key in [
-                "key",
-                "key2",
-                "key3",
-                "profile_key",
-                "range_key",
-                "body",
-            ]
+            "key": key[i],
+            "key2": uuid.uuid4().hex,
+            "key3": uuid.uuid4().hex,
+            "range_key": randint(-(2 ** 63), 2 ** 63 - 1),
+            "profile_key": uuid.uuid4().hex,
+            "body": uuid.uuid4().hex,
         }
-        for _ in range(3)
+        for i in range(3)
     ]
     written = storage.batch_write(country=COUNTRY, records=records)
 
@@ -176,16 +179,21 @@ def test_batch_write_records(storage: Storage, encrypt: bool) -> None:
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
-def test_update_one(storage: Storage, encrypt: bool, update_by: str,) -> None:
-    record = {"key": uuid.uuid4().hex, "profile_key": uuid.uuid4().hex}
-    storage.write(country=COUNTRY, **record)
+def test_update_one(
+    storage: Storage,
+    encrypt: bool,
+    update_by: str,
+    expected_records: List[Dict[str, Any]],
+) -> None:
+    record = expected_records[0]
 
     updated_sample = storage.update_one(
         filters={update_by: record[update_by]}, country=COUNTRY, range_key=333
     )
 
     for key in record:
-        updated_sample["record"][key].should.be.equal(record[key])
+        if key != "range_key":
+            updated_sample["record"][key].should.be.equal(record[key])
     updated_sample["record"]["range_key"].should.be.equal(333)
 
     find_updated_record = storage.find(country=COUNTRY, key=record["key"])
