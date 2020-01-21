@@ -91,7 +91,7 @@ class Storage(object):
         except ValidationError as e:
             raise StorageClientError("Invalid records for batch_write") from e
 
-        encrypted_records = [self.encrypt_record(record) if self.encrypt else record for record in records]
+        encrypted_records = [self.encrypt_record(record) for record in records]
         data_to_send = {"records": encrypted_records}
 
         self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
