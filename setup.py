@@ -3,9 +3,6 @@
 
 # Note: this is a setup file for pip/pypi. It's not a part of the SDK package.
 
-# Note: To use the 'upload' functionality of this file, you must:
-#   $ pipenv install twine --dev
-
 import io
 import os
 import sys
