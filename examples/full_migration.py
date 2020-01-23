@@ -8,10 +8,7 @@ def get_secrets():
     return {
         {
             "currentVersion": 1,
-            "secrets": [
-                {"secret": "password0", "version": 0},
-                {"secret": "password1", "version": 1},
-            ],
+            "secrets": [{"secret": "password0", "version": 0}, {"secret": "password1", "version": 1}],
         }
     }
 
