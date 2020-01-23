@@ -144,7 +144,6 @@ def test_delete_not_existing_record(storage: Storage, encrypt: bool) -> None:
     ).should.have.raised(StorageServerError)
 
 
-@pytest.mark.xfail(Reason="https://incountry.atlassian.net/browse/EN-2026")
 @pytest.mark.parametrize(
     "encrypt", [True, False], ids=["encrypted", "not encrypted"]
 )
