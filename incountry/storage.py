@@ -9,7 +9,7 @@ from jsonschema.exceptions import ValidationError
 from .incountry_crypto import InCrypto
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
-from .validation import batch_records_schema
+from .validation import batch_records_schema, find_response_schema, record_schema, write_response_schema
 from .__version__ import __version__
 
 
@@ -81,7 +81,8 @@ class Storage(object):
 
         data_to_send = self.encrypt_record(data)
 
-        self.request(country, method="POST", data=json.dumps(data_to_send))
+        response = self.request(country, method="POST", data=json.dumps(data_to_send))
+        validate(instance=response, schema=write_response_schema)
 
         return {"record": {"key": key, **record_kwargs}}
 
@@ -94,7 +95,8 @@ class Storage(object):
         encrypted_records = [self.encrypt_record(record) if self.encrypt else record for record in records]
         data_to_send = {"records": encrypted_records}
 
-        self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
+        response = self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
+        validate(instance=response, schema=write_response_schema)
 
         return {"records": records}
 
@@ -118,6 +120,7 @@ class Storage(object):
         country = country.lower()
         key = self.hash_custom_key(key)
         response = self.request(country, path="/" + key)
+        validate(instance=response, schema=record_schema)
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
@@ -133,6 +136,7 @@ class Storage(object):
         response = self.request(
             country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
+        validate(instance=response, schema=find_response_schema)
 
         return {
             "meta": response["meta"],

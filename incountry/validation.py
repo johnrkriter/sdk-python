@@ -34,3 +34,43 @@ batch_records_schema = {
         },
     },
 }
+
+record_schema = {
+    "type": "object",
+    "required": ["key"],
+    "properties": {
+        "key": {"type": "string"},
+        "body": {"type": "string"},
+        "country": {"type": ["string", "null"]},
+        "version": {"type": ["number", "null"]},
+        "profile_key": {"type": ["string", "null"]},
+        "range_key": {"type": ["number", "null"]},
+        "key2": {"type": ["string", "null"]},
+        "key3": {"type": ["string", "null"]},
+    },
+}
+
+find_response_schema = {
+    "type": "object",
+    "properties": {
+        "meta": {
+            "type": 'object',
+            "required": ["count", "limit", "offset", "total"],
+            "properties": {
+                "count": {"type": "number"},
+                "limit": {"type": "number"},
+                "offset": {"type": "number"},
+                "total": {"type": "number"},
+            },
+        },
+        "data": {
+            "type": "array",
+            "items": record_schema,
+        },
+    },
+}
+
+write_response_schema = {
+  "type": "string",
+  "enum": ["OK"]
+}
