@@ -30,13 +30,7 @@ def storage(encrypt: bool) -> Storage:
             secret_key_accessor=secret_key_accessor,
         )
     else:
-        storage = Storage(
-            encrypt=False,
-            debug=True,
-            api_key=API_KEY,
-            environment_id=ENVIRONMENT_ID,
-            endpoint=ENDPOINT,
-        )
+        storage = Storage(encrypt=False, debug=True, api_key=API_KEY, environment_id=ENVIRONMENT_ID, endpoint=ENDPOINT)
 
     yield storage
 

@@ -1,10 +1,6 @@
 InCountry Storage SDK
 ============
 
-Important notes
----------------
-We've changed the encryption algorithm since version `0.5.0` so it is not compatible with earlier versions.
-
 Installation
 -----
 The recommended way to install the SDK is to use `pipenv` (or `pip`):
@@ -15,7 +11,7 @@ $ pipenv install incountry
 Usage
 -----
 To access your data in InCountry using Python SDK, you need to create an instance of `Storage` class.
-```
+```python
 from incountry import Storage
 
 storage = Storage(
@@ -61,7 +57,7 @@ SDK allows you to use custom encryption keys, instead of secrets. Please note th
 
 
 Here are some examples how you can use `SecretKeyAccessor`.
-```
+```python
 # Get secret from variable
 from incountry import SecretKeyAccessor
 
@@ -83,15 +79,15 @@ secret_key_accessor = SecretKeyAccessor(get_secrets_data)
 ### Writing data to Storage
 
 Use `write` method in order to create/replace (by `key`) a record.
-```
+```python
 record = storage.write(
-	country="string",      # Required country code of where to store the data
-	key="string",          # Required record key
-	body="string",         # Optional payload
-	profile_key="string",  # Optional
-	range_key=integer,     # Optional
-	key2="string",         # Optional
-	key3="string"          # Optional
+    country="string",      # Required country code of where to store the data
+    key="string",          # Required record key
+    body="string",         # Optional payload
+    profile_key="string",  # Optional
+    range_key=integer,     # Optional
+    key2="string",         # Optional
+    key3="string",         # Optional
 )
 
 # `write` returns created record on success
@@ -99,15 +95,15 @@ record = storage.write(
 #### Encryption
 InCountry uses client-side encryption for your data. Note that only body is encrypted. Some of other fields are hashed.
 Here is how data is transformed and stored in InCountry database:
-```
+```python
 {
-	key,          # hashed
-	body,         # encrypted
-	profile_key,  # hashed
-	range_key,    # plain
-	key2,         # hashed
-	key3          # hashed
- }
+    key,          # hashed
+    body,         # encrypted
+    profile_key,  # hashed
+    range_key,    # plain
+    key2,         # hashed
+    key3,         # hashed
+}
 ```
 
 #### Batches
@@ -126,17 +122,17 @@ batch_success = storage.batch_write(
 ### Reading stored data
 
 Stored record can be read by `key` using `readAsync` method. It accepts an object with two fields: `country` and `key`
-```
+```python
 record = storage.read(
-	country="string",      # Required country code
-	key="string"           # Required record key
+    country="string",      # Required country code
+    key="string",          # Required record key
 )
 ```
 
 ### Find records
 
 It is possible to search by random keys using `find` method.
-```
+```python
 records = storage.find(country, limit, offset, **filter_kwargs)
 ```
 Parameters:
@@ -146,34 +142,34 @@ Parameters:
 `filter_kwargs` - a filter parameters.
 
 Here is the example of how `find` method can be used:
-```
+```python
 records = storage.find(country="us", limit=10, offset=10, key2="kitty", key3=["mew", "purr"])
 ```
 This call returns all records with `key2` equals `kitty` AND `key3` equals `mew` OR `purr`. The `options` parameter defines the number of records to return and the starting index. It can be used for pagination. Note: SDK returns 100 records at most.
 
 The return object looks like the following:
-```
+```python
 {
-	"data": [/* kitties */],
-	"meta": {
-		"limit": 10,
-		"offset": 10,
-		"total": 124     # total records matching filter, ignoring limit
-	}
+    "data": [...],
+    "meta": {
+        "limit": 10,
+        "offset": 10,
+        "total": 124,  # total records matching filter, ignoring limit
+    }
 }
 ```
 You can use the following types for filter parameters.
 Single value:
-```
+```python
 key2="kitty"
 ```
 One of the values:
-```
+```python
 key3=["mew", "purr"]
 ```
 `range_key` is a numeric field so you can use range filter requests, for example:
-```
-range_key={ "$lt": 1000 } # search for records with range_key < 1000
+```python
+range_key={"$lt": 1000} # search for records with range_key < 1000
 ```
 Available request options for `range_key`: `$lt`, `$lte`, `$gt`, `$gte`.
 
@@ -182,20 +178,20 @@ You can search by any keys: `key`, `key2`, `key3`, `profile_key`, `range_key`.
 ### Find one record matching filter
 
 If you need to find the first record matching filter, you can use the `find_one` method.
-```
+```python
 record = storage.find_one(country, offset, **filter_kwargs)
 ```
 If record is not found, it will return `None`.
 
 ### Delete records
 Use `deleteAsync` method in order to delete a record from InCountry storage. It is only possible using `key` field.
-```
+```python
 storage.delete(
-	country="string",      # Required country code
-	key="string"           # Required record key
+    country="string",      # Required country code
+    key="string",          # Required record key
 )
 
-# delete will raise an Exception if fails
+# `delete` will raise an Exception if fails
 ```
 
 ## Data Migration and Key Rotation support
