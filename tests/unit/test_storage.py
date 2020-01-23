@@ -39,15 +39,11 @@ def mock_backend():
         body=json.dumps({"countries": [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]}),
     )
 
-def get_default_find_response(count, data, total = None):
+
+def get_default_find_response(count, data, total=None):
     total = count if total is None else total
     return {
-        "meta": {
-            "total": total, 
-            "count": count, 
-            "limit": 100, 
-            "offset": 0
-        }, 
+        "meta": {"total": total, "count": count, "limit": 100, "offset": 0},
         "data": data,
     }
 

@@ -54,7 +54,7 @@ find_response_schema = {
     "type": "object",
     "properties": {
         "meta": {
-            "type": 'object',
+            "type": "object",
             "required": ["count", "limit", "offset", "total"],
             "properties": {
                 "count": {"type": "number"},
@@ -63,14 +63,8 @@ find_response_schema = {
                 "total": {"type": "number"},
             },
         },
-        "data": {
-            "type": "array",
-            "items": record_schema,
-        },
+        "data": {"type": "array", "items": record_schema},
     },
 }
 
-write_response_schema = {
-  "type": "string",
-  "enum": ["OK"]
-}
+write_response_schema = {"type": "string", "enum": ["OK"]}
