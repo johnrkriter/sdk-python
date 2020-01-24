@@ -29,6 +29,10 @@ class Storage(object):
         except ValidationError as e:
             raise error_class(error_description) from e
 
+    @staticmethod
+    def validate_response(instance, schema):
+        Storage.try_validate(instance, schema, StorageServerError, "Response validation failed")
+
     def __init__(
         self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
     ):
@@ -89,7 +93,7 @@ class Storage(object):
         data_to_send = self.encrypt_record(data)
 
         response = self.request(country, method="POST", data=json.dumps(data_to_send))
-        Storage.try_validate(response, write_response_schema, StorageServerError, "Response validation failed")
+        Storage.validate_response(response, write_response_schema)
 
         return {"record": {"key": key, **record_kwargs}}
 
@@ -100,7 +104,7 @@ class Storage(object):
         data_to_send = {"records": encrypted_records}
 
         response = self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
-        Storage.try_validate(response, write_response_schema, StorageServerError, "Response validation failed")
+        Storage.validate_response(response, write_response_schema)
 
         return {"records": records}
 
@@ -124,7 +128,7 @@ class Storage(object):
         country = country.lower()
         key = self.hash_custom_key(key)
         response = self.request(country, path="/" + key)
-        Storage.try_validate(response, record_schema, StorageServerError, "Response validation failed")
+        Storage.validate_response(response, record_schema)
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
@@ -140,7 +144,7 @@ class Storage(object):
         response = self.request(
             country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
-        Storage.try_validate(response, find_response_schema, StorageServerError, "Response validation failed")
+        Storage.validate_response(response, find_response_schema)
 
         return {
             "meta": response["meta"],
