@@ -492,8 +492,8 @@ def test_update(client, record, update_key, encrypt):
 @pytest.mark.parametrize(
     "record,country,countries",
     [
-        ({"key": "key1"}, "ru", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
-        ({"key": "key1"}, "ag", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
+        ({"key": "key1", "version": 0}, "ru", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
+        ({"key": "key1", "version": 0}, "ag", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
     ],
 )
 @pytest.mark.happy_path

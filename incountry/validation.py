@@ -37,12 +37,12 @@ batch_records_schema = {
 
 record_schema = {
     "type": "object",
-    "required": ["key"],
+    "required": ["key", "version"],
     "properties": {
         "key": {"type": "string"},
         "body": {"type": "string"},
-        "country": {"type": ["string", "null"]},
-        "version": {"type": ["number", "null"]},
+        "country": {"type": "string"},
+        "version": {"type": "number"},
         "profile_key": {"type": ["string", "null"]},
         "range_key": {"type": ["number", "null"]},
         "key2": {"type": ["string", "null"]},
