@@ -22,6 +22,13 @@ class Storage(object):
     def get_midpop_url(country):
         return "https://{}.api.incountry.io".format(country)
 
+    @staticmethod
+    def try_validate(instance, schema, error_class, error_description):
+        try:
+            validate(instance=instance, schema=schema)
+        except ValidationError as e:
+            raise error_class(error_description) from e
+
     def __init__(
         self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
     ):
@@ -82,21 +89,18 @@ class Storage(object):
         data_to_send = self.encrypt_record(data)
 
         response = self.request(country, method="POST", data=json.dumps(data_to_send))
-        validate(instance=response, schema=write_response_schema)
+        Storage.try_validate(response, write_response_schema, StorageServerError, "Response validation failed")
 
         return {"record": {"key": key, **record_kwargs}}
 
     def batch_write(self, country: str, records: list):
-        try:
-            validate(instance=records, schema=batch_records_schema)
-        except ValidationError as e:
-            raise StorageClientError("Invalid records for batch_write") from e
+        Storage.try_validate(records, batch_records_schema, StorageClientError, "Invalid records for batch_write")
 
         encrypted_records = [self.encrypt_record(record) if self.encrypt else record for record in records]
         data_to_send = {"records": encrypted_records}
 
         response = self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
-        validate(instance=response, schema=write_response_schema)
+        Storage.try_validate(response, write_response_schema, StorageServerError, "Response validation failed")
 
         return {"records": records}
 
@@ -120,7 +124,7 @@ class Storage(object):
         country = country.lower()
         key = self.hash_custom_key(key)
         response = self.request(country, path="/" + key)
-        validate(instance=response, schema=record_schema)
+        Storage.try_validate(response, record_schema, StorageServerError, "Response validation failed")
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
@@ -136,7 +140,7 @@ class Storage(object):
         response = self.request(
             country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
-        validate(instance=response, schema=find_response_schema)
+        Storage.try_validate(response, find_response_schema, StorageServerError, "Response validation failed")
 
         return {
             "meta": response["meta"],
