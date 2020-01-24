@@ -3,7 +3,7 @@ from jsonschema.exceptions import ValidationError
 
 from .exceptions import SecretKeyAccessorException
 
-from .validation import secret_key_accessor_response_schema
+from .validation.schemas import secret_key_accessor_response_schema
 
 
 class SecretKeyAccessor:

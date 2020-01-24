@@ -34,3 +34,18 @@ batch_records_schema = {
         },
     },
 }
+
+custom_encryption_configurations_schema = {
+    "type": "array",
+    "minItems": 1,
+    "items": {
+        "type": "object",
+        "required": ["encrypt", "decrypt", "version", "isCurrent"],
+        "properties": {
+            "encrypt": {"type": "function"},
+            "decrypt": {"type": "function"},
+            "version": {"type": "string"},
+            "isCurrent": {"type": "boolean"},
+        },
+    },
+}

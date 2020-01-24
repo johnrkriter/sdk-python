@@ -3,13 +3,13 @@ import os
 
 import requests
 import json
-from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
+from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
-from .validation import batch_records_schema
+from .validation.schemas import batch_records_schema, custom_encryption_configurations_schema
 from .__version__ import __version__
 
 
@@ -58,9 +58,9 @@ class Storage(object):
             raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
         self.endpoint = endpoint or os.environ.get("INC_ENDPOINT")
-
         if self.endpoint:
             self.log("Connecting to storage endpoint: ", self.endpoint)
+
         self.log("Using API key: ", self.api_key)
 
         self.encrypt = encrypt
@@ -70,6 +70,13 @@ class Storage(object):
             self.crypto = InCrypto(secret_key_accessor)
         else:
             self.crypto = InCrypto()
+
+        self.custom_encryption_configs = None
+
+    def set_custom_encryption(self, configs):
+        validate_custom_encryption(configs)
+        version_to_use = next((c["version"] for c in configs if c["currentVersion"] is True), None)
+        self.crypto.set_custom_encryption(configs, version_to_use)
 
     def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()
@@ -87,7 +94,9 @@ class Storage(object):
 
     def batch_write(self, country: str, records: list):
         try:
-            validate(instance=records, schema=batch_records_schema)
+            validate(
+                instance=records, schema=batch_records_schema,
+            )
         except ValidationError as e:
             raise StorageClientError("Invalid records for batch_write") from e
 
@@ -133,6 +142,9 @@ class Storage(object):
         response = self.request(
             country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
+
+        print(response["data"])
+        print(filter_params)
 
         return {
             "meta": response["meta"],
