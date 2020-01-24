@@ -14,7 +14,7 @@ TEST_RECORDS = [
     {"key": str(uuid.uuid1()), "body": "test"},
     {"key": str(uuid.uuid1()), "body": "test", "key2": "key2"},
     {"key": str(uuid.uuid1()), "body": "test", "key2": "key2", "key3": "key3"},
-    {"key": str(uuid.uuid1()), "body": "test", "key2": "key2", "key3": "key3", "profile_key": "profile_key",},
+    {"key": str(uuid.uuid1()), "body": "test", "key2": "key2", "key3": "key3", "profile_key": "profile_key"},
     {
         "key": str(uuid.uuid1()),
         "body": "test",

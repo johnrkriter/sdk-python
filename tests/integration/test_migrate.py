@@ -17,21 +17,16 @@ COUNTRY = os.environ.get("INT_INC_COUNTRY")
 
 
 @pytest.mark.parametrize("encrypt", [False], ids=["not encrypted"])
-def test_migrate_should_raise_error_without_encryption(
-    storage: Storage, encrypt: bool,
-) -> None:
+def test_migrate_should_raise_error_without_encryption(storage: Storage, encrypt: bool) -> None:
 
     storage.migrate.when.called_with(COUNTRY).should.have.raised(
-        StorageClientError,
-        re.compile(r"Migration not supported when encryption is off"),
+        StorageClientError, re.compile(r"Migration not supported when encryption is off"),
     )
 
 
 @pytest.mark.xfail(Reason="Works only for storage with encrypted records")
 @pytest.mark.parametrize("encrypt", [True], ids=["encrypted"])
-def test_migrate_works_with_encryption(
-    storage: Storage, encrypt: bool, expected_records: List[Dict]
-) -> None:
+def test_migrate_works_with_encryption(storage: Storage, encrypt: bool, expected_records: List[Dict]) -> None:
     keys = {record["key"] for record in expected_records}
     find_all = storage.find(country=COUNTRY)
     all_records = find_all["meta"]["total"]
@@ -39,10 +34,7 @@ def test_migrate_works_with_encryption(
     # There are records with ver 2, let's create storage with different version
     secrets_data = {
         "currentVersion": 3,
-        "secrets": [
-            {"secret": "new super secret", "version": 3},
-            {"secret": "super secret", "version": 2},
-        ],
+        "secrets": [{"secret": "new super secret", "version": 3}, {"secret": "super secret", "version": 2}],
     }
     new_storage = Storage(
         encrypt=True,
@@ -58,23 +50,17 @@ def test_migrate_works_with_encryption(
     migration_result.should.have.key("total_left")
     migration_result["migrated"].should.be.a("int")
     migration_result["total_left"].should.be.a("int")
-    all_records.should.be.greater_than_or_equal_to(
-        migration_result["migrated"]
-    )
+    all_records.should.be.greater_than_or_equal_to(migration_result["migrated"])
 
     nothing_lost = new_storage.find(country=COUNTRY)
     found_keys = {record["key"] for record in nothing_lost["data"]}
     keys.should.be.equal(found_keys)
     nothing_lost["meta"]["total"].should.be.equal(all_records)
 
-    read_record = new_storage.read(
-        country=COUNTRY, key=expected_records[0]["key"]
-    )
+    read_record = new_storage.read(country=COUNTRY, key=expected_records[0]["key"])
     for key in expected_records[0]:
         read_record["record"][key].should.be.equal(expected_records[0][key])
-    read_record["record"]["version"].should.be.equal(
-        secrets_data["currentVersion"]
+    read_record["record"]["version"].should.be.equal(secrets_data["currentVersion"])
+    storage.read.when.called_with(country=COUNTRY, key=expected_records[0]["key"]).should.have.raised(
+        StorageServerError
     )
-    storage.read.when.called_with(
-        country=COUNTRY, key=expected_records[0]["key"]
-    ).should.have.raised(StorageServerError)

@@ -10,6 +10,7 @@ httpretty = "*"
 sure = "*"
 pytest-cov = "*"
 pytest-tldr = "*"
+flake8 = "*"
 
 [packages]
 requests = "*"
@@ -24,7 +25,9 @@ python_version = "3.7"
 
 [scripts]
 integrations = "pytest -s -vv --ignore=tests/unit --rootdir=tests/integration --cov=incountry --cov-report xml:it_coverage.xml --cov-report term-missing"
-test = "pytest -s -vvv --ignore=tests/integration --rootdir=tests/unit --cov=incountry --cov-report xml:ut_coverage.xml --cov-report term-missing"
+tests = "pytest -s -vv --ignore=tests/integration --rootdir=tests/unit --cov=incountry --cov-report xml:ut_coverage.xml --cov-report term-missing"
+check-format = "black --check ."
+check-flake8 = "flake8 ."
 
 [pipenv]
 allow_prereleases = true
