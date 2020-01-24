@@ -127,8 +127,7 @@ def test_batch_write(client, records, encrypt):
             (
                 item
                 for item in records
-                if (encrypt and client(encrypt).hash_custom_key(item.get("key")) == received_record.get("key"))
-                or (not encrypt and item.get("key") == received_record.get("key"))
+                if (client(encrypt).hash_custom_key(item.get("key")) == received_record.get("key"))
             ),
             None,
         )
@@ -136,11 +135,9 @@ def test_batch_write(client, records, encrypt):
             assert received_record["range_key"] == original_record["range_key"]
 
         for k in ["body", "key", "key2", "key3", "profile_key"]:
-            if original_record.get(k, None) and encrypt:
+            if original_record.get(k, None):
                 assert received_record[k] != original_record[k]
-            if original_record.get(k, None) and not encrypt:
-                assert received_record[k] == original_record[k]
-
+            
 
 @httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
