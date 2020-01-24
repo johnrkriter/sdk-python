@@ -137,7 +137,7 @@ def test_batch_write(client, records, encrypt):
         for k in ["body", "key", "key2", "key3", "profile_key"]:
             if original_record.get(k, None):
                 assert received_record[k] != original_record[k]
-            
+
 
 @httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
