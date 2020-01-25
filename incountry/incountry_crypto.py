@@ -19,30 +19,14 @@ class InCrypto:
 
     ENC_VERSION = "2"
     PT_ENC_VERSION = "pt"
+    CUSTOM_ENCRYPTION_VERSION_PREFIX = "c"
 
     SUPPORTED_VERSIONS = ["pt", "1", "2"]
 
-    @staticmethod
-    def pack_base64(salt, iv, enc, auth_tag):
-        parts = [salt, iv, enc, auth_tag]
-        joined_parts = b"".join(parts)
-        return base64.b64encode(joined_parts).decode("utf8")
-
-    @staticmethod
-    def unpack_base64(enc):
-        b_data = base64.b64decode(enc)
-        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
-        if len(b_data) < min_len:
-            raise InCryptoException("Wrong ciphertext size")
-        return [
-            b_data[: InCrypto.SALT_LENGTH],
-            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
-            b_data[InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH],
-            b_data[-InCrypto.AUTH_TAG_LENGTH :],
-        ]
-
     def __init__(self, secret_key_accessor=None):
         self.secret_key_accessor = secret_key_accessor
+        self.custom_encryption_configs = None
+        self.custom_encryption_version = None
 
     def _get_decryptor(self, enc_version):
         if enc_version == self.PT_ENC_VERSION:
@@ -53,54 +37,71 @@ class InCrypto:
             return self.decrypt_v1
         if enc_version == "2":
             return self.decrypt_v2
+
         if enc_version in self.custom_encryption_configs:
             return self.decrypt_custom
 
         raise InCryptoException("Unknown decryptor version requested")
 
-    def set_custom_encryption(self, custom_encryption_configs, custom_encryption_version):
+    def set_custom_encryption(self, custom_encryption_configs, custom_encryption_version=None):
+        if self.secret_key_accessor is None:
+            raise InCryptoException("Custom encryption not supported when encryption is off")
+
         configs_by_packed_version = {}
         for c in custom_encryption_configs:
-            version = self.pack_custom_encryption_version(["version"])
+            version = InCrypto.pack_custom_encryption_version(c["version"])
             configs_by_packed_version[version] = c
 
         self.custom_encryption_configs = configs_by_packed_version
-        self.custom_encryption_version = self.pack_custom_encryption_version(custom_encryption_version)
-
-    def pack_custom_encryption_version(self, version):
-        return "c" + base64.encode(version.encode("utf8")).decode("utf8")
-
-    def unpack_custom_encryption_version(self, encoded_version):
-        return base64.b64decode(encoded_version[1:]).decode("utf8")
+        print("====", custom_encryption_version)
+        if custom_encryption_version is not None:
+            self.custom_encryption_version = InCrypto.pack_custom_encryption_version(custom_encryption_version)
+            self.secret_key_accessor.enable_custom_key_length()
 
     def encrypt(self, raw):
         if self.custom_encryption_version is None:
             return self.encrypt_default(raw)
 
+        return self.encrypt_custom(raw)
+
+    def encrypt_custom(self, raw):
+        [key, key_version, is_derived] = self.get_key()
+
+        if is_derived:
+            raise InCryptoException(
+                "Cannot use custom encryption with default key derivation function."
+                + " Please use isKey=True when passing secrets data to SecretKeyAccessor"
+            )
+
         custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
-            encrypted = custom_encryption["encrypt"](raw)
-            return self.pack_custom_encryption_version(self.custom_encryption_version) + ":" + encrypted
+            print("key", key)
+            encrypted = custom_encryption["encrypt"](raw, key, key_version)
+
+            return (
+                self.custom_encryption_version + ":" + InCrypto.str_to_base64(encrypted),
+                key_version,
+            )
         except Exception as e:
             raise InCryptoException(e) from e
 
     def encrypt_default(self, raw):
         if self.secret_key_accessor is None:
             return [
-                self.PT_ENC_VERSION + ":" + base64.b64encode(raw.encode("utf8")).decode("utf8"),
+                InCrypto.PT_ENC_VERSION + ":" + InCrypto.str_to_base64(raw),
                 SecretKeyAccessor.DEFAULT_VERSION,
             ]
 
         salt = os.urandom(InCrypto.SALT_LENGTH)
         iv = os.urandom(InCrypto.IV_LENGTH)
-        [key, key_version] = self.get_key(salt)
+        [key, key_version, *rest] = self.get_key(salt)
 
         encryptor = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend()).encryptor()
         try:
             encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
             auth_tag = encryptor.tag
             return (
-                self.ENC_VERSION + ":" + self.pack_base64(salt, iv, encrypted, auth_tag),
+                InCrypto.ENC_VERSION + ":" + self.pack_base64(salt, iv, encrypted, auth_tag),
                 key_version,
             )
         except Exception as e:
@@ -136,7 +137,10 @@ class InCrypto:
                 + " Please use isKey=True when passing secrets data to SecretKeyAccessor"
             )
 
-        return self.custom_encryption_configs[enc_version].decrypt(enc, key, key_version)
+        raw_enc = InCrypto.base64_to_str(enc)
+        print("key", key)
+
+        return self.custom_encryption_configs[enc_version]["decrypt"](raw_enc, key, key_version)
 
     def decrypt_v1(self, packed_enc, key_version, enc_version):
         b_data = bytes.fromhex(packed_enc)
@@ -164,7 +168,7 @@ class InCrypto:
         decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
-    def get_key(self, salt, key_version=None):
+    def get_key(self, salt=b"", key_version=None):
         [secret, version, is_key] = self.secret_key_accessor.get_secret(version=key_version)
 
         if is_key:
@@ -184,3 +188,42 @@ class InCrypto:
 
     def hash(self, data):
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def b_to_base64(bytes):
+        return base64.b64encode(bytes).decode("utf8")
+
+    @staticmethod
+    def str_to_base64(enc):
+        return base64.b64encode(enc.encode("utf8")).decode("utf8")
+
+    @staticmethod
+    def base64_to_str(enc):
+        return base64.b64decode(enc).decode("utf8")
+
+    @staticmethod
+    def pack_custom_encryption_version(version):
+        return InCrypto.CUSTOM_ENCRYPTION_VERSION_PREFIX + base64.b64encode(version.encode("utf8")).decode("utf8")
+
+    @staticmethod
+    def unpack_custom_encryption_version(encoded_version):
+        return base64.b64decode(encoded_version[1:]).decode("utf8")
+
+    @staticmethod
+    def pack_base64(salt, iv, enc, auth_tag):
+        parts = [salt, iv, enc, auth_tag]
+        joined_parts = b"".join(parts)
+        return base64.b64encode(joined_parts).decode("utf8")
+
+    @staticmethod
+    def unpack_base64(enc):
+        b_data = base64.b64decode(enc)
+        min_len = InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH + InCrypto.AUTH_TAG_LENGTH
+        if len(b_data) < min_len:
+            raise InCryptoException("Wrong ciphertext size")
+        return [
+            b_data[: InCrypto.SALT_LENGTH],
+            b_data[InCrypto.SALT_LENGTH : InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH],
+            b_data[InCrypto.SALT_LENGTH + InCrypto.IV_LENGTH : len(b_data) - InCrypto.AUTH_TAG_LENGTH],
+            b_data[-InCrypto.AUTH_TAG_LENGTH :],
+        ]

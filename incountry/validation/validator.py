@@ -17,7 +17,7 @@ def validate_custom_encryption(configs):
 
     has_current_version = False
     for custom_encryption_config in configs:
-        if custom_encryption_config["isCurrent"] is True:
+        if custom_encryption_config.get("isCurrent", False) is True:
             if has_current_version:
                 raise ValidationError("There must be at most one current version of custom encryption")
             else:

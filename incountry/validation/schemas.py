@@ -40,7 +40,7 @@ custom_encryption_configurations_schema = {
     "minItems": 1,
     "items": {
         "type": "object",
-        "required": ["encrypt", "decrypt", "version", "isCurrent"],
+        "required": ["encrypt", "decrypt", "version"],
         "properties": {
             "encrypt": {"type": "function"},
             "decrypt": {"type": "function"},

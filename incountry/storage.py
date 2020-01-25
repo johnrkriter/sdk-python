@@ -74,8 +74,11 @@ class Storage(object):
         self.custom_encryption_configs = None
 
     def set_custom_encryption(self, configs):
-        validate_custom_encryption(configs)
-        version_to_use = next((c["version"] for c in configs if c["currentVersion"] is True), None)
+        try:
+            validate_custom_encryption(configs)
+        except ValidationError as e:
+            raise StorageClientError("Invalid custom encryption format") from e
+        version_to_use = next((c["version"] for c in configs if c.get("isCurrent", False) is True), None)
         self.crypto.set_custom_encryption(configs, version_to_use)
 
     def write(self, country: str, key: str, **record_kwargs):

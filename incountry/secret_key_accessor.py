@@ -13,6 +13,13 @@ class SecretKeyAccessor:
         if not callable(accessor_function):
             raise SecretKeyAccessorException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
+        self.allow_custom_key_length = False
+
+    def enable_custom_key_length(self):
+        self.allow_custom_key_length = True
+
+    def disable_custom_key_length(self):
+        self.allow_custom_key_length = False
 
     def get_secret(self, version=None):
         if version is not None and not isinstance(version, int):
@@ -36,7 +43,7 @@ class SecretKeyAccessor:
             if secret_data.get("version") == version_to_search:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
-                if is_key and len(secret) != InCrypto.KEY_LENGTH:
+                if not self.allow_custom_key_length and is_key and len(secret) != InCrypto.KEY_LENGTH:
                     raise SecretKeyAccessorException("Key should be 32-characters long")
                 return (secret, version_to_search, is_key)
 
