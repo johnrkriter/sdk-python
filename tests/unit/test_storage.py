@@ -244,6 +244,24 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
 
 
 @httpretty.activate
+@pytest.mark.parametrize("record", TEST_RECORDS[0])
+@pytest.mark.happy_path
+def test_read_response_validation(client, record):
+    key = str(uuid.uuid1())
+    key_hash = client(encrypt=True).hash_custom_key(key)
+
+    httpretty.register_uri(
+        httpretty.GET,
+        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + key_hash,
+        body=json.dumps({"key": key_hash}),
+    )
+
+    client().read.when.called_with(country=COUNTRY, key=key).should.have.raised(
+        StorageServerError, "Response validation failed"
+    )
+
+
+@httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
@@ -318,6 +336,21 @@ def test_find(client, query, records, encrypt):
         for k in ["body", "key", "key2", "key3", "profile_key"]:
             if match.get(k, None):
                 assert data_record[k] == match[k]
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    "query,records", [({"key": "key1"}, TEST_RECORDS)],
+)
+@pytest.mark.happy_path
+def test_find_response_validation(client, query, records):
+    httpretty.register_uri(
+        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find", body=json.dumps(records)
+    )
+
+    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
+        StorageServerError, "Response validation failed"
+    )
 
 
 @httpretty.activate
