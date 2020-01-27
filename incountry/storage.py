@@ -6,7 +6,7 @@ import json
 
 from .incountry_crypto import InCrypto
 from .secret_key_accessor import SecretKeyAccessor
-from .exceptions import StorageClientError, StorageServerError
+from .exceptions import InCryptoException, StorageClientError, StorageServerError
 
 
 class Storage(object):
@@ -121,8 +121,8 @@ class Storage(object):
         return self.decrypt_record(data)
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
-        if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
-            raise StorageClientError("limit should be an integer >= 0 and <= %s" % self.FIND_LIMIT)
+        if not isinstance(limit, int) or limit <= 0 or limit > self.FIND_LIMIT:
+            raise StorageClientError("limit should be an integer > 0 and <= %s" % self.FIND_LIMIT)
 
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")
@@ -139,10 +139,22 @@ class Storage(object):
         self.raise_if_server_error(r)
         response = r.json()
 
-        return {
+        decoded_records = []
+        undecoded_records = []
+        for record in response["data"]:
+            try:
+                decoded_records.append(self.decrypt_record(record))
+            except InCryptoException as error:
+                undecoded_records.append({"rawData": record, "error": error})
+
+        result = {
             "meta": response["meta"],
-            "data": [self.decrypt_record(record) for record in response["data"]],
+            "data": decoded_records,
         }
+        if len(undecoded_records) > 0:
+            result["errors"] = undecoded_records
+
+        return result
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
