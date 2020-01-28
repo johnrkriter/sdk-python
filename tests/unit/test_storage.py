@@ -40,6 +40,14 @@ def mock_backend():
     )
 
 
+def get_default_find_response(count, data, total=None):
+    total = count if total is None else total
+    return {
+        "meta": {"total": total, "count": count, "limit": 100, "offset": 0},
+        "data": data,
+    }
+
+
 @pytest.fixture()
 def client():
     def cli(encrypt=True, endpoint=POPAPI_URL, secret_accessor=SecretKeyAccessor(lambda: SECRET_KEY)):
@@ -61,7 +69,7 @@ def client():
 @pytest.mark.happy_path
 def test_write(client, record, encrypt):
     mock_backend()
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, body="OK")
 
     write_res = client(encrypt).write(country=COUNTRY, **record)
     write_res.should.have.key("record")
@@ -84,7 +92,7 @@ def test_write(client, record, encrypt):
 @pytest.mark.happy_path
 def test_write_with_keys_data(client, record, encrypt, keys_data):
     mock_backend()
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, body="OK")
 
     secret_accessor = SecretKeyAccessor(lambda: keys_data)
 
@@ -113,7 +121,7 @@ def test_write_with_keys_data(client, record, encrypt, keys_data):
 @pytest.mark.happy_path
 def test_batch_write(client, records, encrypt):
     mock_backend()
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite")
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite", body="OK")
 
     batch_res = client(encrypt).batch_write(country=COUNTRY, records=records)
     batch_res.should.have.key("records")
@@ -233,6 +241,24 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
 
 
 @httpretty.activate
+@pytest.mark.parametrize("record", TEST_RECORDS[0])
+@pytest.mark.happy_path
+def test_read_response_validation(client, record):
+    key = str(uuid.uuid1())
+    key_hash = client(encrypt=True).hash_custom_key(key)
+
+    httpretty.register_uri(
+        httpretty.GET,
+        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + key_hash,
+        body=json.dumps({"key": key_hash}),
+    )
+
+    client().read.when.called_with(country=COUNTRY, key=key).should.have.raised(
+        StorageServerError, "Response validation failed"
+    )
+
+
+@httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
@@ -280,7 +306,7 @@ def test_find(client, query, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(enc_data)}, "data": enc_data}),
+        body=json.dumps(get_default_find_response(len(enc_data), enc_data)),
     )
 
     find_response = client(encrypt).find(country=COUNTRY, **query)
@@ -313,6 +339,21 @@ def test_find(client, query, records, encrypt):
 @pytest.mark.parametrize(
     "query,records", [({"key": "key1"}, TEST_RECORDS)],
 )
+@pytest.mark.happy_path
+def test_find_response_validation(client, query, records):
+    httpretty.register_uri(
+        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find", body=json.dumps(records)
+    )
+
+    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
+        StorageServerError, "Response validation failed"
+    )
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    "query,records", [({"key": "key1"}, TEST_RECORDS)],
+)
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_find_enc_and_non_enc(client, query, records, encrypt):
@@ -325,7 +366,7 @@ def test_find_enc_and_non_enc(client, query, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(stored_data)}, "data": stored_data}),
+        body=json.dumps(get_default_find_response(len(stored_data), stored_data)),
     )
 
     find_response = client(encrypt).find(country=COUNTRY, **query)
@@ -363,15 +404,13 @@ def test_find_one(client, query, record, encrypt):
         stored_record = dict(record)
         stored_record = client(encrypt).encrypt_record(stored_record)
 
+    count = 0 if stored_record is None else 1
+    data = [] if stored_record is None else [stored_record]
+
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps(
-            {
-                "meta": {"total": 0 if stored_record is None else 1},
-                "data": [] if stored_record is None else [stored_record],
-            }
-        ),
+        body=json.dumps(get_default_find_response(count, data)),
     )
 
     find_one_response = client(encrypt).find_one(country=COUNTRY, **query)
@@ -408,10 +447,10 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": total_stored, "count": len(stored_records)}, "data": stored_records}),
+        body=json.dumps(get_default_find_response(len(stored_records), stored_records, total_stored)),
     )
 
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite")
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/batchWrite", body="OK")
 
     migrate_res = client(encrypt=True, secret_accessor=secret_accessor_new).migrate(country=COUNTRY)
 
@@ -445,11 +484,11 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
 def test_update(client, record, update_key, encrypt):
     stored_record = client(encrypt).encrypt_record(dict(record))
 
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY)
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, body="OK")
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": 1}, "data": [stored_record]}),
+        body=json.dumps(get_default_find_response(1, [stored_record])),
     )
 
     data_for_update = dict(
@@ -483,8 +522,8 @@ def test_update(client, record, update_key, encrypt):
 @pytest.mark.parametrize(
     "record,country,countries",
     [
-        ({"key": "key1"}, "ru", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
-        ({"key": "key1"}, "ag", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
+        ({"key": "key1", "version": 0}, "ru", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
+        ({"key": "key1", "version": 0}, "ag", [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]),
     ],
 )
 @pytest.mark.happy_path
@@ -553,7 +592,7 @@ def test_find_error(client, query):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": 0}, "data": []}),
+        body=json.dumps(get_default_find_response(0, [])),
     )
 
     client().find.when.called_with(country=COUNTRY, **query).should.have.raised(StorageClientError)
@@ -569,7 +608,7 @@ def test_update_error(client, records, encrypt):
     httpretty.register_uri(
         httpretty.POST,
         POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps({"meta": {"total": len(enc_data)}, "data": enc_data}),
+        body=json.dumps(get_default_find_response(len(enc_data), enc_data)),
     )
 
     client(encrypt).update_one.when.called_with(
