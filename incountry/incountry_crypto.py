@@ -53,10 +53,8 @@ class InCrypto:
             configs_by_packed_version[version] = c
 
         self.custom_encryption_configs = configs_by_packed_version
-        print("====", custom_encryption_version)
         if custom_encryption_version is not None:
             self.custom_encryption_version = InCrypto.pack_custom_encryption_version(custom_encryption_version)
-            self.secret_key_accessor.enable_custom_key_length()
 
     def encrypt(self, raw):
         if self.custom_encryption_version is None:
@@ -65,7 +63,7 @@ class InCrypto:
         return self.encrypt_custom(raw)
 
     def encrypt_custom(self, raw):
-        [key, key_version, is_derived] = self.get_key()
+        [key, key_version, is_derived] = self.get_key(ignore_length_validation=True)
 
         if is_derived:
             raise InCryptoException(
@@ -75,8 +73,11 @@ class InCrypto:
 
         custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
-            print("key", key)
             encrypted = custom_encryption["encrypt"](raw, key, key_version)
+            if not isinstance(encrypted, str):
+                raise InCryptoException(
+                    "Custom encryption 'encrypt' method should return string. Got" + str(type(encrypted))
+                )
 
             return (
                 self.custom_encryption_version + ":" + InCrypto.str_to_base64(encrypted),
@@ -129,7 +130,7 @@ class InCrypto:
         return enc
 
     def decrypt_custom(self, enc, key_version, enc_version):
-        [key, *rest, is_derived] = self.get_key(None, key_version=key_version)
+        [key, *rest, is_derived] = self.get_key(key_version=key_version, ignore_length_validation=True)
 
         if is_derived:
             raise InCryptoException(
@@ -138,9 +139,14 @@ class InCrypto:
             )
 
         raw_enc = InCrypto.base64_to_str(enc)
-        print("key", key)
 
-        return self.custom_encryption_configs[enc_version]["decrypt"](raw_enc, key, key_version)
+        decrypted = self.custom_encryption_configs[enc_version]["decrypt"](raw_enc, key, key_version)
+        if not isinstance(decrypted, str):
+            raise InCryptoException(
+                "Custom encryption 'decrypt' method should return string. Got" + str(type(decrypted))
+            )
+
+        return decrypted
 
     def decrypt_v1(self, packed_enc, key_version, enc_version):
         b_data = bytes.fromhex(packed_enc)
@@ -168,8 +174,10 @@ class InCrypto:
         decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
-    def get_key(self, salt=b"", key_version=None):
-        [secret, version, is_key] = self.secret_key_accessor.get_secret(version=key_version)
+    def get_key(self, salt=b"", key_version=None, ignore_length_validation=False):
+        [secret, version, is_key] = self.secret_key_accessor.get_secret(
+            version=key_version, ignore_length_validation=ignore_length_validation
+        )
 
         if is_key:
             return (secret.encode("utf8"), version, False)

@@ -74,6 +74,8 @@ class Storage(object):
         self.custom_encryption_configs = None
 
     def set_custom_encryption(self, configs):
+        if not self.encrypt:
+            raise StorageClientError("Cannot use custom encryption when encryption is off")
         try:
             validate_custom_encryption(configs)
         except ValidationError as e:
@@ -145,9 +147,6 @@ class Storage(object):
         response = self.request(
             country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
         )
-
-        print(response["data"])
-        print(filter_params)
 
         return {
             "meta": response["meta"],
@@ -267,7 +266,6 @@ class Storage(object):
     def request(self, country, path="", method="GET", data=None):
         try:
             endpoint = self.getendpoint(country, "/v2/storage/records/" + country + path)
-
             res = requests.request(method=method, url=endpoint, headers=self.headers(), data=data)
 
             if res.status_code >= 400:

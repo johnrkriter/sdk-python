@@ -287,5 +287,71 @@ def test_custom_enc_with_wrong_secret_key_accessor_data(secret_key_accessor):
     cipher = InCrypto(secret_key_accessor)
     cipher.set_custom_encryption(custom_enc, enc_version)
 
-    cipher.encrypt.when.called_with("test").should.have.raised(InCryptoException)
-    cipher.decrypt.when.called_with("test").should.have.raised(InCryptoException)
+    cipher.encrypt.when.called_with("test").should.have.raised(
+        InCryptoException, "Cannot use custom encryption with default key derivation function"
+    )
+
+    dummy_enc = InCrypto.pack_custom_encryption_version(enc_version) + ":" + "test"
+
+    cipher.decrypt.when.called_with(dummy_enc).should.have.raised(
+        InCryptoException, "Cannot use custom encryption with default key derivation function"
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: True,
+                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
+    ],
+)
+@pytest.mark.error_path
+def test_custom_enc_with_enc_not_returning_str(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {"currentVersion": 1, "secrets": [{"secret": "testsecret", "version": 1, "isKey": True}]}
+    )
+
+    cipher = InCrypto(secret_key_accessor)
+    cipher.set_custom_encryption(custom_encryption, custom_encryption[0]["version"])
+
+    cipher.encrypt.when.called_with("test").should.have.raised(
+        InCryptoException, "Custom encryption 'encrypt' method should return string"
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+                "decrypt": lambda text, key, key_ver: True,
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
+    ],
+)
+@pytest.mark.error_path
+def test_custom_enc_with_dec_not_returning_str(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [{"secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)), "version": 1, "isKey": True}],
+        }
+    )
+
+    cipher = InCrypto(secret_key_accessor)
+    cipher.set_custom_encryption(custom_encryption, custom_encryption[0]["version"])
+
+    [enc, *rest] = cipher.encrypt("test")
+
+    cipher.decrypt.when.called_with(enc).should.have.raised(
+        InCryptoException, "Custom encryption 'decrypt' method should return string"
+    )
