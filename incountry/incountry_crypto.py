@@ -45,7 +45,7 @@ class InCrypto:
 
     def set_custom_encryption(self, custom_encryption_configs, custom_encryption_version=None):
         if self.secret_key_accessor is None:
-            raise InCryptoException("Custom encryption not supported when encryption is off")
+            raise InCryptoException("Custom encryption not supported without secret_key_accessor provided")
 
         configs_by_packed_version = {}
         for c in custom_encryption_configs:
@@ -63,13 +63,7 @@ class InCrypto:
         return self.encrypt_custom(raw)
 
     def encrypt_custom(self, raw):
-        [key, key_version, is_derived] = self.get_key(ignore_length_validation=True)
-
-        if is_derived:
-            raise InCryptoException(
-                "Cannot use custom encryption with default key derivation function."
-                + " Please use isKey=True when passing secrets data to SecretKeyAccessor"
-            )
+        [key, key_version] = self.get_key(get_raw_secret=True)
 
         custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
@@ -112,7 +106,7 @@ class InCrypto:
         parts = enc.split(":")
 
         if len(parts) != 2:
-            raise InCryptoException("Invalid ciphertext")
+            raise InCryptoException("Invalid я ")
 
         [enc_version, packed_enc] = parts
 
@@ -130,13 +124,7 @@ class InCrypto:
         return enc
 
     def decrypt_custom(self, enc, key_version, enc_version):
-        [key, *rest, is_derived] = self.get_key(key_version=key_version, ignore_length_validation=True)
-
-        if is_derived:
-            raise InCryptoException(
-                "Cannot use custom encryption with default key derivation function."
-                + " Please use isKey=True when passing secrets data to SecretKeyAccessor"
-            )
+        [key, *rest] = self.get_key(key_version=key_version, get_raw_secret=True)
 
         raw_enc = InCrypto.base64_to_str(enc)
 
@@ -174,20 +162,19 @@ class InCrypto:
         decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
-    def get_key(self, salt=b"", key_version=None, ignore_length_validation=False):
+    def get_key(self, salt=b"", key_version=None, get_raw_secret=False):
         [secret, version, is_key] = self.secret_key_accessor.get_secret(
-            version=key_version, ignore_length_validation=ignore_length_validation
+            version=key_version, ignore_length_validation=get_raw_secret
         )
 
-        if is_key:
-            return (secret.encode("utf8"), version, False)
+        if is_key or get_raw_secret:
+            return (secret.encode("utf8"), version)
 
         return (
             hashlib.pbkdf2_hmac(
                 InCrypto.PBKDF2_DIGEST, secret.encode("utf8"), salt, InCrypto.PBKDF2_ROUNDS, InCrypto.KEY_LENGTH,
             ),
             version,
-            True,
         )
 
     def get_current_secret_version(self):

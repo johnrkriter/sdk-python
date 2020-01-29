@@ -264,41 +264,6 @@ def test_dec_v2_wrong_auth_tag(ciphertext, plaintext, password):
 
 
 @pytest.mark.parametrize(
-    "secret_key_accessor",
-    [
-        SecretKeyAccessor(lambda: "password"),
-        SecretKeyAccessor(lambda: {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}),
-    ],
-)
-@pytest.mark.error_path
-def test_custom_enc_with_wrong_secret_key_accessor_data(secret_key_accessor):
-    enc_version = "test"
-
-    def enc(text, key, key_ver):
-        cipher = Fernet(key)
-        return cipher.encrypt(text.encode("utf8")).decode("utf8")
-
-    def dec(ciphertext, key, key_ver):
-        cipher = Fernet(key)
-        return cipher.decrypt(ciphertext.encode("utf8")).decode("utf8")
-
-    custom_enc = [{"encrypt": enc, "decrypt": dec, "version": enc_version, "isCurrent": True}]
-
-    cipher = InCrypto(secret_key_accessor)
-    cipher.set_custom_encryption(custom_enc, enc_version)
-
-    cipher.encrypt.when.called_with("test").should.have.raised(
-        InCryptoException, "Cannot use custom encryption with default key derivation function"
-    )
-
-    dummy_enc = InCrypto.pack_custom_encryption_version(enc_version) + ":" + "test"
-
-    cipher.decrypt.when.called_with(dummy_enc).should.have.raised(
-        InCryptoException, "Cannot use custom encryption with default key derivation function"
-    )
-
-
-@pytest.mark.parametrize(
     "custom_encryption",
     [
         [
@@ -322,6 +287,16 @@ def test_custom_enc_with_enc_not_returning_str(custom_encryption):
 
     cipher.encrypt.when.called_with("test").should.have.raised(
         InCryptoException, "Custom encryption 'encrypt' method should return string"
+    )
+
+
+@pytest.mark.error_path
+def test_custom_enc_without_secret_key_accessor():
+
+    cipher = InCrypto()
+
+    cipher.set_custom_encryption.when.called_with("").should.have.raised(
+        InCryptoException, "Custom encryption not supported without secret_key_accessor provided"
     )
 
 
