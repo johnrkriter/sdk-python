@@ -114,7 +114,6 @@ def test_delete_not_existing_record(storage: Storage, encrypt: bool) -> None:
     storage.delete.when.called_with(country=COUNTRY, key=record_key).should.have.raised(StorageServerError)
 
 
-@pytest.mark.xfail(Reason="https://incountry.atlassian.net/browse/EN-2026")
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 @pytest.mark.parametrize("key", [[uuid.uuid4().hex for _ in range(3)]])
 def test_batch_write_records(storage: Storage, encrypt: bool, key: List[str], clean_up_records: None) -> None:
