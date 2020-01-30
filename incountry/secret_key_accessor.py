@@ -37,7 +37,7 @@ class SecretKeyAccessor:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
                 if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise SecretKeyAccessorException("Key should be 32-characters long")
+                    raise SecretKeyAccessorException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
                 return (secret, version_to_search, is_key)
 
         raise SecretKeyAccessorException("Secret not found for version {}".format(version_to_search))
