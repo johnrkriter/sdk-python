@@ -264,6 +264,17 @@ def test_dec_v2_wrong_auth_tag(ciphertext, plaintext, password):
 
 
 @pytest.mark.parametrize(
+    "ciphertext", ["unsupported_version:abc", "some:unsupported:data", "7765618db31daf5366a6fc3520010327"]
+)
+@pytest.mark.error_path
+def test_wrong_ciphertext(ciphertext):
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+    cipher = InCrypto(secret_accessor)
+
+    cipher.decrypt.when.called_with(ciphertext).should.have.raised(InCryptoException)
+
+
+@pytest.mark.parametrize(
     "custom_encryption",
     [
         [
