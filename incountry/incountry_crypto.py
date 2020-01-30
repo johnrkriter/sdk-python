@@ -106,7 +106,7 @@ class InCrypto:
         parts = enc.split(":")
 
         if len(parts) != 2:
-            raise InCryptoException("Invalid я ")
+            raise InCryptoException("Invalid ciphertext")
 
         [enc_version, packed_enc] = parts
 
