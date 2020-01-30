@@ -557,6 +557,22 @@ def test_default_endpoint(client, record, country, countries):
 
 
 @httpretty.activate
+@pytest.mark.parametrize("record,country", [({"key": "key1"}, "ru"), ({"key": "key1"}, "ag")])
+@pytest.mark.happy_path
+def test_custom_endpoint(client, record, country):
+    stored_record = client().encrypt_record(dict(record))
+    read_url = POPAPI_URL + "/v2/storage/records/" + country + "/" + stored_record["key"]
+    httpretty.register_uri(httpretty.GET, read_url, body=json.dumps(stored_record))
+
+    client(endpoint=POPAPI_URL).read(country=country, key=record["key"])
+
+    latest_request = httpretty.HTTPretty.last_request
+    latest_request_url = "https://" + latest_request.headers.get("Host", "") + latest_request.path
+
+    assert latest_request_url == read_url
+
+
+@httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize(
     "custom_encryption",
