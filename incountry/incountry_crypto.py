@@ -38,7 +38,7 @@ class InCrypto:
         if enc_version == "2":
             return self.decrypt_v2
 
-        if enc_version in self.custom_encryption_configs:
+        if self.custom_encryption_configs is not None and enc_version in self.custom_encryption_configs:
             return self.decrypt_custom
 
         raise InCryptoException("Unknown decryptor version requested")
