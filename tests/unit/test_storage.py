@@ -692,8 +692,8 @@ def test_primary_custom_encryption_with_default_encryption(client, custom_encryp
     rec1_res = client_new.read(country=COUNTRY, key=record1["key"])
     rec2_res = client_new.read(country=COUNTRY, key=record2["key"])
 
-    assert rec1_res["record"]["key"] == record1["key"]
-    assert rec2_res["record"]["key"] == record2["key"]
+    omit(rec1_res["record"], "version").should.be.equal(record1)
+    omit(rec2_res["record"], "version").should.be.equal(record2)
 
 
 @httpretty.activate
