@@ -50,6 +50,29 @@ def test_get_secret(keys_data, proper_version, proper_key, proper_is_key):
     assert is_key == proper_is_key
 
 
+@pytest.mark.parametrize(
+    "keys_data, proper_version, proper_key, proper_is_key",
+    [
+        (
+            {
+                "currentVersion": 1,
+                "secrets": [{"secret": "password0", "version": 0}, {"secret": "1234", "version": 1, "isKey": True}],
+            },
+            1,
+            "1234",
+            True,
+        ),
+    ],
+)
+@pytest.mark.happy_path
+def test_get_secret_ignoring_length_validation(keys_data, proper_version, proper_key, proper_is_key):
+    secret_accessor = SecretKeyAccessor(lambda: keys_data)
+    [secret, secret_version, is_key] = secret_accessor.get_secret(ignore_length_validation=True)
+    assert secret_version == proper_version
+    assert secret == proper_key
+    assert is_key == proper_is_key
+
+
 @pytest.mark.error_path
 def test_non_callable_accessor_function():
     SecretKeyAccessor.when.called_with("password").should.have.raised(SecretKeyAccessorException)

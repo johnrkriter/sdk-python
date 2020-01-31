@@ -3,13 +3,18 @@ import os
 
 import requests
 import json
-from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
+from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError
-from .validation import batch_records_schema, find_response_schema, record_schema, write_response_schema
+from .validation.schemas import (
+    batch_records_schema,
+    find_response_schema,
+    record_schema,
+    write_response_schema,
+)
 from .__version__ import __version__
 
 
@@ -69,9 +74,9 @@ class Storage(object):
             raise ValueError("Please pass api_key param or set INC_API_KEY env var")
 
         self.endpoint = endpoint or os.environ.get("INC_ENDPOINT")
-
         if self.endpoint:
             self.log("Connecting to storage endpoint: ", self.endpoint)
+
         self.log("Using API key: ", self.api_key)
 
         self.encrypt = encrypt
@@ -81,6 +86,18 @@ class Storage(object):
             self.crypto = InCrypto(secret_key_accessor)
         else:
             self.crypto = InCrypto()
+
+        self.custom_encryption_configs = None
+
+    def set_custom_encryption(self, configs):
+        if not self.encrypt:
+            raise StorageClientError("Cannot use custom encryption when encryption is off")
+        try:
+            validate_custom_encryption(configs)
+        except ValidationError as e:
+            raise StorageClientError("Invalid custom encryption format") from e
+        version_to_use = next((c["version"] for c in configs if c.get("isCurrent", False) is True), None)
+        self.crypto.set_custom_encryption(configs, version_to_use)
 
     def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()
@@ -264,7 +281,6 @@ class Storage(object):
     def request(self, country, path="", method="GET", data=None):
         try:
             endpoint = self.getendpoint(country, "/v2/storage/records/" + country + path)
-
             res = requests.request(method=method, url=endpoint, headers=self.headers(), data=data)
 
             if res.status_code >= 400:

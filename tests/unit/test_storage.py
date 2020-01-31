@@ -1,9 +1,13 @@
-import pytest
-from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor
 import uuid
 import json
+import os
+
+import pytest
 import sure
 import httpretty
+from cryptography.fernet import Fernet
+
+from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor, InCrypto
 
 POPAPI_URL = "https://popapi.com:8082"
 COUNTRY = "us"
@@ -569,6 +573,180 @@ def test_custom_endpoint(client, record, country):
 
 
 @httpretty.activate
+@pytest.mark.parametrize("record", TEST_RECORDS)
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
+    ],
+)
+@pytest.mark.happy_path
+def test_custom_encryption_write(client, record, custom_encryption):
+    key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {"currentVersion": 1, "secrets": [{"secret": key, "version": 1, "isKey": True}]}
+    )
+
+    client = client(secret_accessor=secret_key_accessor)
+    client.set_custom_encryption(custom_encryption)
+
+    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, body="OK")
+
+    client.write(country=COUNTRY, **record)
+
+    received_record = json.loads(httpretty.last_request().body)
+
+    if record.get("range_key", None):
+        assert received_record["range_key"] == record["range_key"]
+
+    for k in ["body", "key", "key2", "key3", "profile_key"]:
+        if record.get(k, None):
+            assert received_record[k] != record[k]
+
+
+@httpretty.activate
+@pytest.mark.parametrize("record", TEST_RECORDS)
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
+    ],
+)
+@pytest.mark.happy_path
+def test_custom_encryption_read(client, record, custom_encryption):
+    key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {"currentVersion": 1, "secrets": [{"secret": key, "version": 1, "isKey": True}]}
+    )
+
+    country = "us"
+
+    client = client(secret_accessor=secret_key_accessor)
+    client.set_custom_encryption(custom_encryption)
+
+    stored_record = client.encrypt_record(dict(record))
+    read_record_url = POPAPI_URL + "/v2/storage/records/" + country + "/" + stored_record["key"]
+    httpretty.register_uri(httpretty.GET, read_record_url, body=json.dumps(stored_record))
+
+    res = client.read(country=country, key=record["key"])
+
+    omit(res["record"], "version").should.be.equal(record)
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
+    ],
+)
+@pytest.mark.happy_path
+def test_primary_custom_encryption_with_default_encryption(client, custom_encryption):
+    record1 = {"key": str(uuid.uuid1()), "body": "body1"}
+    record2 = {"key": str(uuid.uuid1()), "body": "body2"}
+
+    key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
+    secret_key_accessor_old = SecretKeyAccessor(
+        lambda: {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}
+    )
+    secret_key_accessor_new = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 2,
+            "secrets": [{"secret": "password", "version": 1}, {"secret": key, "version": 2, "isKey": True}],
+        }
+    )
+
+    client_old = client(secret_accessor=secret_key_accessor_old)
+    client_new = client(secret_accessor=secret_key_accessor_new)
+    client_new.set_custom_encryption(custom_encryption)
+
+    stored_record1 = client_old.encrypt_record(dict(record1))
+    read_record1_url = POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record1["key"]
+    httpretty.register_uri(httpretty.GET, read_record1_url, body=json.dumps(stored_record1))
+
+    stored_record2 = client_new.encrypt_record(dict(record2))
+    read_record2_url = POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record2["key"]
+    httpretty.register_uri(httpretty.GET, read_record2_url, body=json.dumps(stored_record2))
+
+    rec1_res = client_new.read(country=COUNTRY, key=record1["key"])
+    rec2_res = client_new.read(country=COUNTRY, key=record2["key"])
+
+    omit(rec1_res["record"], "version").should.be.equal(record1)
+    omit(rec2_res["record"], "version").should.be.equal(record2)
+
+
+@httpretty.activate
+@pytest.mark.parametrize(
+    "custom_encryption",
+    [
+        [
+            {
+                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "version": "test",
+            }
+        ],
+    ],
+)
+@pytest.mark.happy_path
+def test_custom_encryption_with_primary_default_encryption(client, custom_encryption):
+    record1 = {"key": str(uuid.uuid1()), "body": "body1"}
+    record2 = {"key": str(uuid.uuid1()), "body": "body2"}
+
+    key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
+    secret_key_accessor_old = SecretKeyAccessor(
+        lambda: {"currentVersion": 1, "secrets": [{"secret": key, "version": 1, "isKey": True}]}
+    )
+    secret_key_accessor_new = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 2,
+            "secrets": [{"secret": key, "version": 1, "isKey": True}, {"secret": "password", "version": 2}],
+        }
+    )
+
+    custom_encryption_old = [{**custom_encryption[0], "isCurrent": True}]
+    client_old = client(secret_accessor=secret_key_accessor_old)
+    client_old.set_custom_encryption(custom_encryption_old)
+    client_new = client(secret_accessor=secret_key_accessor_new)
+    client_new.set_custom_encryption(custom_encryption)
+
+    stored_record1 = client_old.encrypt_record(dict(record1))
+    read_record1_url = POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record1["key"]
+    httpretty.register_uri(httpretty.GET, read_record1_url, body=json.dumps(stored_record1))
+
+    stored_record2 = client_new.encrypt_record(dict(record2))
+    read_record2_url = POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + stored_record2["key"]
+    httpretty.register_uri(httpretty.GET, read_record2_url, body=json.dumps(stored_record2))
+
+    rec1_res = client_new.read(country=COUNTRY, key=record1["key"])
+    rec2_res = client_new.read(country=COUNTRY, key=record2["key"])
+
+    assert rec1_res["record"]["key"] == record1["key"]
+    assert rec2_res["record"]["key"] == record2["key"]
+
+
+@httpretty.activate
 @pytest.mark.parametrize("record", [TEST_RECORDS[0]])
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.error_path
@@ -694,3 +872,10 @@ def test_error_find_one_insufficient_args(client, record):
 @pytest.mark.error_path
 def test_error_migrate_without_encryption(client):
     client(encrypt=False).migrate.when.called_with(country=COUNTRY).should.have.raised(StorageClientError)
+
+
+@pytest.mark.error_path
+def test_custom_enc_with_enc_disabled(client):
+    client(encrypt=False).set_custom_encryption.when.called_with("").should.have.raised(
+        StorageClientError, "Cannot use custom encryption when encryption is off"
+    )

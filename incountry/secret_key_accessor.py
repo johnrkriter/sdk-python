@@ -3,7 +3,7 @@ from jsonschema.exceptions import ValidationError
 
 from .exceptions import SecretKeyAccessorException
 
-from .validation import secret_key_accessor_response_schema
+from .validation.schemas import secret_key_accessor_response_schema
 
 
 class SecretKeyAccessor:
@@ -14,7 +14,7 @@ class SecretKeyAccessor:
             raise SecretKeyAccessorException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
 
-    def get_secret(self, version=None):
+    def get_secret(self, version=None, ignore_length_validation=False):
         if version is not None and not isinstance(version, int):
             raise SecretKeyAccessorException("Invalid secret version requested. Version should be of type `int`")
 
@@ -36,8 +36,8 @@ class SecretKeyAccessor:
             if secret_data.get("version") == version_to_search:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
-                if is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise SecretKeyAccessorException("Key should be 32-characters long")
+                if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
+                    raise SecretKeyAccessorException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
                 return (secret, version_to_search, is_key)
 
         raise SecretKeyAccessorException("Secret not found for version {}".format(version_to_search))
