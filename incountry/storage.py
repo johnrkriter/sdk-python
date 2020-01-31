@@ -8,7 +8,7 @@ from jsonschema.exceptions import ValidationError
 from .incountry_crypto import InCrypto
 from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
-from .exceptions import StorageClientError, StorageServerError
+from .exceptions import StorageClientError, StorageServerError, InCryptoException
 from .validation.schemas import (
     batch_records_schema,
     find_response_schema,
@@ -149,8 +149,8 @@ class Storage(object):
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
-        if not isinstance(limit, int) or limit < 0 or limit > self.FIND_LIMIT:
-            raise StorageClientError("limit should be an integer >= 0 and <= %s" % self.FIND_LIMIT)
+        if not isinstance(limit, int) or limit <= 0 or limit > self.FIND_LIMIT:
+            raise StorageClientError("limit should be an integer > 0 and <= %s" % self.FIND_LIMIT)
 
         if not isinstance(offset, int) or offset < 0:
             raise StorageClientError("limit should be an integer >= 0")
@@ -163,10 +163,22 @@ class Storage(object):
         )
         Storage.validate_response(response, find_response_schema)
 
-        return {
+        decoded_records = []
+        undecoded_records = []
+        for record in response["data"]:
+            try:
+                decoded_records.append(self.decrypt_record(record))
+            except InCryptoException as error:
+                undecoded_records.append({"rawData": record, "error": error})
+
+        result = {
             "meta": response["meta"],
-            "records": [self.decrypt_record(record) for record in response["data"]],
+            "records": decoded_records,
         }
+        if len(undecoded_records) > 0:
+            result["errors"] = undecoded_records
+
+        return result
 
     def find_one(self, offset=0, **kwargs):
         result = self.find(offset=offset, limit=1, **kwargs)
