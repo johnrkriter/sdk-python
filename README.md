@@ -151,6 +151,7 @@ The return object looks like the following:
 ```python
 {
     "data": [...],
+    "errors": [...],   # optional
     "meta": {
         "limit": 10,
         "offset": 10,
@@ -174,6 +175,23 @@ range_key={"$lt": 1000} # search for records with range_key < 1000
 Available request options for `range_key`: `$lt`, `$lte`, `$gt`, `$gte`.
 
 You can search by any keys: `key`, `key2`, `key3`, `profile_key`, `range_key`.
+
+#### Error handling
+
+There could be a situation when `find` method will receive records that could not be decrypted.
+For example, if one changed the encryption key while the found data is encrypted with the older version of that key.
+In such cases find() method return data will be as follows:
+
+```python
+{
+    "data": [...],  # successfully decrypted records 
+    "errors": [{
+        "rawData",  # raw record which caused decryption error
+        "error",    # decryption error description 
+    }, ...],
+    "meta": { ... }
+}
+```
 
 ### Find one record matching filter
 
