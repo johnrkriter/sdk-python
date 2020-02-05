@@ -1,45 +1,30 @@
 from __future__ import absolute_import
 import os
 
-import requests
 import json
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
-from .validation.validator import validate, validate_custom_encryption
+from .validation.validator import validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
-from .exceptions import StorageClientError, StorageServerError, InCryptoException
-from .validation.schemas import (
-    batch_records_schema,
-    find_response_schema,
-    record_schema,
-    write_response_schema,
-)
-from .__version__ import __version__
+from .exceptions import StorageClientError, InCryptoException
+
+from .http_client import HttpClient
 
 
-class Storage(object):
+class Storage:
     FIND_LIMIT = 100
-    PORTALBACKEND_URI = "https://portal-backend.incountry.com"
-    DEFAULT_ENDPOINT = "https://us.api.incountry.io"
-
-    @staticmethod
-    def get_midpop_url(country):
-        return "https://{}.api.incountry.io".format(country)
-
-    @staticmethod
-    def try_validate(instance, schema, error_class, error_description):
-        try:
-            validate(instance=instance, schema=schema)
-        except ValidationError as e:
-            raise error_class(error_description) from e
-
-    @staticmethod
-    def validate_response(instance, schema):
-        Storage.try_validate(instance, schema, StorageServerError, "Response validation failed")
 
     def __init__(
-        self, environment_id=None, api_key=None, endpoint=None, encrypt=True, secret_key_accessor=None, debug=False,
+        self,
+        environment_id=None,
+        client_id=None,
+        client_secret=None,
+        encrypt=True,
+        secret_key_accessor=None,
+        endpoint=None,
+        auth_endpoint=None,
+        debug=False,
     ):
         """
         Returns a client to talk to the InCountry storage network.
@@ -51,16 +36,19 @@ class Storage(object):
             will forward data to miniPOPs
 
         @param environment_id: The id of the environment into which you wll store data
-        @param api_key: Your API key
+        @param client_id: Your client_id
+        @param client_secret: Your client_secret
         @param endpoint: Optional. Will use DNS routing by default.
+        @param auth_endpoint: Optional. Will use this endpoint to communicate with auth server.
         @param encrypt: Pass True (default) to encrypt values before storing
         @param secret_key_accessor: pass SecretKeyAccessor class instance which provides secret key for encrytion
         @param debug: pass True to enable some debug logging
 
-        You can set parameters via env vars also:
+        You can also set parameters via env vars:
 
         INC_ENVIRONMENT_ID
-        INC_API_KEY
+        INC_CLIENT_ID
+        INC_CLIENT_SECRET
         INC_ENDPOINT
         """
         self.debug = debug
@@ -69,15 +57,12 @@ class Storage(object):
         if not self.env_id:
             raise ValueError("Please pass environment_id param or set INC_ENVIRONMENT_ID env var")
 
-        self.api_key = api_key or os.environ.get("INC_API_KEY")
-        if not self.api_key:
-            raise ValueError("Please pass api_key param or set INC_API_KEY env var")
-
-        self.endpoint = endpoint or os.environ.get("INC_ENDPOINT")
-        if self.endpoint:
-            self.log("Connecting to storage endpoint: ", self.endpoint)
-
-        self.log("Using API key: ", self.api_key)
+        client_id = client_id or os.environ.get("INC_CLIENT_ID")
+        client_secret = client_secret or os.environ.get("INC_CLIENT_SECRET")
+        if not isinstance(client_id, str) or len(client_id) == 0:
+            raise ValueError("Please pass client_id param or set INC_CLIENT_ID env var")
+        if not isinstance(client_secret, str) or len(client_secret) == 0:
+            raise ValueError("Please pass client_secret param or set INC_CLIENT_SECRET env var")
 
         self.encrypt = encrypt
         if encrypt:
@@ -88,6 +73,15 @@ class Storage(object):
             self.crypto = InCrypto()
 
         self.custom_encryption_configs = None
+
+        self.http_client = HttpClient(
+            env_id=self.env_id,
+            client_id=client_id,
+            client_secret=client_secret,
+            endpoint=endpoint or os.environ.get("INC_ENDPOINT"),
+            auth_endpoint=auth_endpoint,
+            debug=self.debug,
+        )
 
     def set_custom_encryption(self, configs):
         if not self.encrypt:
@@ -108,44 +102,20 @@ class Storage(object):
                 data[k] = record_kwargs.get(k)
 
         data_to_send = self.encrypt_record(data)
-
-        response = self.request(country, method="POST", data=json.dumps(data_to_send))
-        Storage.validate_response(response, write_response_schema)
-
+        self.http_client.write(country=country, data=data_to_send)
         return {"record": {"key": key, **record_kwargs}}
 
     def batch_write(self, country: str, records: list):
-        Storage.try_validate(records, batch_records_schema, StorageClientError, "Invalid records for batch_write")
-
+        # Storage.try_validate(records, batch_records_schema, StorageClientError, "Invalid records for batch_write")
         encrypted_records = [self.encrypt_record(record) for record in records]
         data_to_send = {"records": encrypted_records}
-
-        response = self.request(country, path="/batchWrite", method="POST", data=json.dumps(data_to_send))
-        Storage.validate_response(response, write_response_schema)
-
+        self.http_client.batch_write(country=country, data=data_to_send)
         return {"records": records}
-
-    def update_one(self, country: str, filters: dict, **record_kwargs):
-        country = country.lower()
-        existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
-
-        if existing_records_response["meta"]["total"] >= 2:
-            raise StorageServerError("Multiple records found. Can not update")
-
-        if existing_records_response["meta"]["total"] == 0:
-            raise StorageServerError("Record not found")
-
-        updated_record = {**existing_records_response["records"][0], **record_kwargs}
-
-        self.write(country=country, **updated_record)
-
-        return {"record": updated_record}
 
     def read(self, country: str, key: str):
         country = country.lower()
         key = self.hash_custom_key(key)
-        response = self.request(country, path="/" + key)
-        Storage.validate_response(response, record_schema)
+        response = self.http_client.read(country=country, key=key)
         return {"record": self.decrypt_record(response)}
 
     def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
@@ -158,10 +128,7 @@ class Storage(object):
         filter_params = self.prepare_filter_params(**filter_kwargs)
         options = {"limit": limit, "offset": offset}
 
-        response = self.request(
-            country, path="/find", method="POST", data=json.dumps({"filter": filter_params, "options": options}),
-        )
-        Storage.validate_response(response, find_response_schema)
+        response = self.http_client.find(country=country, data={"filter": filter_params, "options": options})
 
         decoded_records = []
         undecoded_records = []
@@ -187,7 +154,7 @@ class Storage(object):
     def delete(self, country: str, key: str):
         country = country.lower()
         key = self.hash_custom_key(key)
-        self.request(country, path="/" + key, method="DELETE")
+        self.http_client.delete(country=country, key=key)
         return {"success": True}
 
     def migrate(self, country: str, limit: int = FIND_LIMIT):
@@ -263,52 +230,3 @@ class Storage(object):
                     if record.get(k) and body["meta"].get(k):
                         res[k] = body["meta"][k]
         return res
-
-    def get_midpop_country_codes(self):
-        r = requests.get(self.PORTALBACKEND_URI + "/countries")
-        if r.status_code >= 400:
-            raise StorageServerError("Unable to retrieve countries list")
-        data = r.json()
-
-        return [country["id"].lower() for country in data["countries"] if country["direct"]]
-
-    def getendpoint(self, country, path):
-        if not path.startswith("/"):
-            path = "/" + path
-
-        if self.endpoint:
-            res = "{}{}".format(self.endpoint, path)
-            self.log("Endpoint: ", res)
-            return res
-
-        midpops = self.get_midpop_country_codes()
-
-        is_midpop = country in midpops
-
-        res = Storage.get_midpop_url(country) + path if is_midpop else "{}{}".format(self.DEFAULT_ENDPOINT, path)
-
-        self.log("Endpoint: ", res)
-        return res
-
-    def request(self, country, path="", method="GET", data=None):
-        try:
-            endpoint = self.getendpoint(country, "/v2/storage/records/" + country + path)
-            res = requests.request(method=method, url=endpoint, headers=self.headers(), data=data)
-
-            if res.status_code >= 400:
-                raise StorageServerError("{} {} - {}".format(res.status_code, res.url, res.text))
-
-            try:
-                return res.json()
-            except Exception:
-                return res.text
-        except Exception as e:
-            raise StorageServerError(e) from e
-
-    def headers(self):
-        return {
-            "Authorization": "Bearer " + self.api_key,
-            "x-env-id": self.env_id,
-            "Content-Type": "application/json",
-            "User-Agent": "SDK-Python/" + __version__,
-        }

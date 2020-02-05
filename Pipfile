@@ -19,6 +19,7 @@ wheel = "*"
 twine = "*"
 cryptography = "*"
 jsonschema = "*"
+requests-oauthlib = "*"
 
 [requires]
 python_version = "3.7"
