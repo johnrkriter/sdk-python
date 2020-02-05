@@ -238,7 +238,9 @@ The resulted encrypted/decrypted data should be a string.
 `version` attribute is used to differ one custom encryption from another and from the default encryption as well.
 This way SDK will be able to successfully decrypt any old data if encryption changes with time.
 
-`isCurrent` attribute allows to specify one of the custom encryption configurations to use for encryption. Only single configuration can be nominated as `"isCurrent": True`. If none of the configurations have `"isCurrent": True` then the SDK will use default encryption to encrypt stored data while maintaining the ability to decrypt old data, encrypted with custom encryption (if any).
+`isCurrent` attribute allows to specify one of the custom encryption configurations to use for encryption. Only one configuration can be set as `"isCurrent": True`.
+
+If none of the configurations have `"isCurrent": True` then the SDK will use default encryption to encrypt stored data. At the same time it will keep the ability to decrypt old data, encrypted with custom encryption (if any).
 
 Here's an example of how you can set up SDK to use custom encryption (using Fernet encryption method from https://cryptography.io/en/latest/fernet/)
 
