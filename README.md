@@ -252,7 +252,7 @@ custom_encryption_configs = [
     }
 ]
 
-key = InCrypto.b_to_base64(os.urandom(32)) # Fernet uses 32-byte length base64-encoded key
+key = "<base64_key_data>" # Fernet uses 32-byte length key encoded using base64
 
 secret_key_accessor = SecretKeyAccessor(
     lambda: {
