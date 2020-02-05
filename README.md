@@ -37,15 +37,15 @@ Note: even though SDK uses PBKDF2 to generate a cryptographically strong encrypt
 
 `SecretKeyAccessor` class constructor allows you to pass a function that should return either a string representing your secret or a dict (we call it `secrets_data` object):
 
-```
+```python
 {
-  secrets: [{
-       secret: <string>,
-       version: <int>,   # Should be a positive integer
-	   isKey: <boolean>  # Should be True only for user-defined encryption keys
+  "secrets": [{
+       "secret": <str>,
+       "version": <int>,   # Should be a positive integer
+	   "isKey": <bool>  # Should be True only for user-defined encryption keys
     }
   }, ....],
-  currentVersion: <int>,
+  "currentVersion": <int>,
 }
 ```
 
@@ -207,6 +207,71 @@ SDK introduces `migrate(country: str, limit: int)` method which allows you to re
 ```
 
 For a detailed example of a migration script please see `/examples/full_migration.py`
+
+Custom Encryption Support
+-----
+SDK supports the ability to provide custom encryption/decryption methods if you decide to use your own algorithm instead of the default one.
+
+`Storage.set_custom_encryption(configs)` allows you to pass an array of custom encryption configurations with the following schema, which enables custom encryption:
+
+```python
+{
+    "encrypt": <callable>,
+    "decrypt": <callable>,
+    "isCurrent": <bool>,
+    "version": <str>
+}
+```
+
+Both `encrypt` and `decrypt` attributes should be functions implementing the following interface
+
+```python
+encrypt(raw:str, key:bytes, key_version:int)->str:
+    ...
+
+decrypt(raw:str, key:bytes, key_version:int)->str:
+    ...
+```
+They should accept raw data to encrypt/decrypt, key data (represented as bytes array) and key version received from `SecretKeyAccessor`.
+The resulted encrypted/decrypted data should be a string.
+
+`version` attribute is used to differ one custom encryption from another and from the default encryption as well.
+This way SDK will be able to successfully decrypt any old data if encryption changes with time.
+
+`isCurrent` attribute allows to specify one of the custom encryption configurations to use for encryption. Only single configuration can be nominated as `isCurrent`. If none SDK will use default encryption to encrypt stored data while maintaining the ability to decrypt old data, encrypted with custom encryption (if any).
+
+Here's an example of how you can set up SDK to use custom encryption (using Fernet encryption method from https://cryptography.io/en/latest/fernet/)
+
+```python
+custom_encryption_configs = [
+    {
+        "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
+        "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+        "version": "test",
+        "isCurrent": True,
+    }
+]
+
+key = InCrypto.b_to_base64(os.urandom(32)) # Fernet uses 32-byte length base64-encoded key
+
+secret_key_accessor = SecretKeyAccessor(
+    lambda: {
+        "currentVersion": 1,
+        "secrets": [{"secret": key, "version": 1, "isKey": True}],
+
+
+    }
+)
+
+storage = Storage(
+    api_key="<api_key>",
+    environment_id="<env_id>",
+    secret_key_accessor=secret_key_accessor,
+)
+
+storage.set_custom_encryption(custom_encryption)
+storage.write(country="us", key="<key>", body="<body>")
+```
 
 Testing Locally
 -----
