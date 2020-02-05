@@ -243,10 +243,19 @@ This way SDK will be able to successfully decrypt any old data if encryption cha
 Here's an example of how you can set up SDK to use custom encryption (using Fernet encryption method from https://cryptography.io/en/latest/fernet/)
 
 ```python
+
+def enc(text, key, key_ver):
+        cipher = Fernet(key)
+        return cipher.encrypt(text.encode("utf8")).decode("utf8")
+
+def dec(ciphertext, key, key_ver):
+    cipher = Fernet(key)
+    return cipher.decrypt(ciphertext.encode("utf8")).decode("utf8")
+
 custom_encryption_configs = [
     {
-        "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-        "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+        "encrypt": enc,
+        "decrypt": dec,
         "version": "test",
         "isCurrent": True,
     }
