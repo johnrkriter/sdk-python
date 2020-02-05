@@ -226,10 +226,10 @@ SDK supports the ability to provide custom encryption/decryption methods if you 
 Both `encrypt` and `decrypt` attributes should be functions implementing the following interface
 
 ```python
-encrypt(raw:str, key:bytes, key_version:int)->str:
+encrypt(raw:str, key:bytes, key_version:int) -> str:
     ...
 
-decrypt(raw:str, key:bytes, key_version:int)->str:
+decrypt(raw:str, key:bytes, key_version:int) -> str:
     ...
 ```
 They should accept raw data to encrypt/decrypt, key data (represented as bytes array) and key version received from `SecretKeyAccessor`.
