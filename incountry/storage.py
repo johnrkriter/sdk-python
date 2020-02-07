@@ -101,7 +101,7 @@ class Storage(object):
 
     def write(self, country: str, key: str, **record_kwargs):
         country = country.lower()
-        data = {"country": country, "key": key}
+        data = {"key": key}
 
         for k in ["body", "key2", "key3", "profile_key", "range_key"]:
             if record_kwargs.get(k):
