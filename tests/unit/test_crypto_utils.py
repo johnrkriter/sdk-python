@@ -9,7 +9,7 @@ from incountry import (
     InCrypto,
 )
 
-from incountry.encryption_utils import hash, is_json
+from incountry.crypto_utils import hash, is_json
 
 
 PREPARED_HASH = {

@@ -6,7 +6,7 @@ import json
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
-from .encryption_utils import decrypt_record, encrypt_record, get_salted_hash
+from .crypto_utils import decrypt_record, encrypt_record, get_salted_hash
 from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError, InCryptoException
