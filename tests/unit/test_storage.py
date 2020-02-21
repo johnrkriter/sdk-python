@@ -14,7 +14,7 @@ from incountry import (
     SecretKeyAccessor,
     InCrypto,
     encrypt_record,
-    hash_custom_key,
+    get_salted_hash,
 )
 
 POPAPI_URL = "https://popapi.com:8082"
@@ -60,9 +60,8 @@ def get_default_find_response(count, data, total=None):
     }
 
 
-def get_key_hash(encryption_enabled, key):
-    in_crypto = InCrypto(SecretKeyAccessor(lambda: SECRET_KEY)) if encryption_enabled else InCrypto()
-    return hash_custom_key(in_crypto, key, "test")
+def get_key_hash(key):
+    return get_salted_hash(key, "test")
 
 
 @pytest.fixture()
@@ -149,7 +148,7 @@ def test_batch_write(client, records, encrypt):
 
     for received_record in received_records["records"]:
         original_record = next(
-            (item for item in records if (get_key_hash(encrypt, item.get("key")) == received_record.get("key"))), None,
+            (item for item in records if (get_key_hash(item.get("key")) == received_record.get("key"))), None,
         )
         if original_record.get("range_key", None):
             assert received_record["range_key"] == original_record["range_key"]
@@ -257,7 +256,7 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
 @pytest.mark.happy_path
 def test_read_response_validation(client, record):
     key = str(uuid.uuid1())
-    key_hash = get_key_hash(True, key)
+    key_hash = get_key_hash(key)
 
     httpretty.register_uri(
         httpretty.GET,

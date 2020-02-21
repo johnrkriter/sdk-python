@@ -6,7 +6,7 @@ import json
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
-from .encryption_utils import decrypt_record, encrypt_record, hash_custom_key
+from .encryption_utils import decrypt_record, encrypt_record, get_salted_hash
 from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError, InCryptoException
@@ -144,7 +144,7 @@ class Storage(object):
 
     def read(self, country: str, key: str):
         country = country.lower()
-        key = hash_custom_key(self.crypto, key, self.env_id)
+        key = get_salted_hash(key, self.env_id)
         response = self.request(country, path="/" + key)
         Storage.validate_response(response, record_schema)
         return {"record": self.decrypt_record(response)}
@@ -187,7 +187,7 @@ class Storage(object):
 
     def delete(self, country: str, key: str):
         country = country.lower()
-        key = hash_custom_key(self.crypto, key, self.env_id)
+        key = get_salted_hash(key, self.env_id)
         self.request(country, path="/" + key, method="DELETE")
         return {"success": True}
 
@@ -218,9 +218,9 @@ class Storage(object):
         for k in ["key", "key2", "key3", "profile_key"]:
             if filter_kwargs.get(k):
                 if filter_kwargs.get(k, None) and isinstance(filter_kwargs[k], list):
-                    filter_params[k] = [hash_custom_key(self.crypto, x, self.env_id) for x in filter_kwargs[k]]
+                    filter_params[k] = [get_salted_hash(x, self.env_id) for x in filter_kwargs[k]]
                 elif filter_kwargs.get(k, None):
-                    filter_params[k] = hash_custom_key(self.crypto, filter_kwargs[k], self.env_id)
+                    filter_params[k] = get_salted_hash(filter_kwargs[k], self.env_id)
         if filter_kwargs.get("range_key", None):
             filter_params["range_key"] = filter_kwargs["range_key"]
         return filter_params

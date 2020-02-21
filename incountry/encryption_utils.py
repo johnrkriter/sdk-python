@@ -1,15 +1,17 @@
+import hashlib
 import json
+from jsonschema.exceptions import ValidationError
 from .incountry_crypto import InCrypto
 
 
 def validate_crypto(crypto):
     if not isinstance(crypto, InCrypto):
-        raise Exception(f"'crypto' argument should be an instance of InCrypto. Got {type(crypto)}")
+        raise ValidationError(f"'crypto' argument should be an instance of InCrypto. Got {type(crypto)}")
 
 
 def validate_is_string(value, arg_name):
     if not isinstance(value, str):
-        raise Exception(f"'{arg_name}' argument should be of type string. Got {type(value)}")
+        raise ValidationError(f"'{arg_name}' argument should be of type string. Got {type(value)}")
 
 
 def is_json(data):
@@ -20,11 +22,14 @@ def is_json(data):
     return True
 
 
-def hash_custom_key(crypto, value, salt):
-    validate_crypto(crypto)
+def hash(data):
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def get_salted_hash(value, salt):
     validate_is_string(value, "value")
     validate_is_string(salt, "salt")
-    return crypto.hash(value + ":" + salt)
+    return hash(value + ":" + salt)
 
 
 def encrypt_record(crypto, record, salt):
@@ -35,7 +40,7 @@ def encrypt_record(crypto, record, salt):
     for k in ["key", "key2", "key3", "profile_key"]:
         if res.get(k):
             body["meta"][k] = res.get(k)
-            res[k] = hash_custom_key(crypto, res[k], salt)
+            res[k] = get_salted_hash(res[k], salt)
     if res.get("body"):
         body["payload"] = res.get("body")
 
