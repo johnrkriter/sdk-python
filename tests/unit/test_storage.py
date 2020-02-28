@@ -7,7 +7,15 @@ import sure
 import httpretty
 from cryptography.fernet import Fernet
 
-from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor, InCrypto
+from incountry import (
+    Storage,
+    StorageServerError,
+    StorageClientError,
+    SecretKeyAccessor,
+    InCrypto,
+    encrypt_record,
+    get_salted_hash,
+)
 
 POPAPI_URL = "https://popapi.com:8082"
 COUNTRY = "us"
@@ -50,6 +58,10 @@ def get_default_find_response(count, data, total=None):
         "meta": {"total": total, "count": count, "limit": 100, "offset": 0},
         "data": data,
     }
+
+
+def get_key_hash(key):
+    return get_salted_hash(key, "test")
 
 
 @pytest.fixture()
@@ -136,12 +148,7 @@ def test_batch_write(client, records, encrypt):
 
     for received_record in received_records["records"]:
         original_record = next(
-            (
-                item
-                for item in records
-                if (client(encrypt).hash_custom_key(item.get("key")) == received_record.get("key"))
-            ),
-            None,
+            (item for item in records if (get_key_hash(item.get("key")) == received_record.get("key"))), None,
         )
         if original_record.get("range_key", None):
             assert received_record["range_key"] == original_record["range_key"]
@@ -249,7 +256,7 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
 @pytest.mark.happy_path
 def test_read_response_validation(client, record):
     key = str(uuid.uuid1())
-    key_hash = client(encrypt=True).hash_custom_key(key)
+    key_hash = get_key_hash(key)
 
     httpretty.register_uri(
         httpretty.GET,

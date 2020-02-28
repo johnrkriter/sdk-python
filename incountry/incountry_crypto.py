@@ -178,9 +178,6 @@ class InCrypto:
         [secret, version, is_key] = self.secret_key_accessor.get_secret()
         return version
 
-    def hash(self, data):
-        return hashlib.sha256(data.encode("utf-8")).hexdigest()
-
     @staticmethod
     def b_to_base64(bytes):
         return base64.b64encode(bytes).decode("utf8")
