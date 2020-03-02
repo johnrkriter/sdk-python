@@ -1,11 +1,13 @@
 from __future__ import absolute_import
 import os
+import json
 
 import requests
-import json
+
 from jsonschema.exceptions import ValidationError
 
 from .incountry_crypto import InCrypto
+from .crypto_utils import decrypt_record, encrypt_record, get_salted_hash
 from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError, InCryptoException
@@ -152,7 +154,7 @@ class Storage(object):
     @validate_model(Country)
     @validate_model(Record)
     def read(self, country: str, key: str):
-        key = self.hash_custom_key(key)
+        key = get_salted_hash(key, self.env_id)
         response = self.request(country, path="/" + key)
         Storage.validate_response(response, record_schema)
         return {"record": self.decrypt_record(response)}
@@ -230,7 +232,7 @@ class Storage(object):
     @validate_model(Country)
     @validate_model(Record)
     def delete(self, country: str, key: str):
-        key = self.hash_custom_key(key)
+        key = get_salted_hash(key, self.env_id)
         self.request(country, path="/" + key, method="DELETE")
         return {"success": True}
 
@@ -259,57 +261,23 @@ class Storage(object):
         if self.debug:
             print("[incountry] ", args)
 
-    def is_json(self, data):
-        try:
-            json.loads(data)
-        except ValueError:
-            return False
-        return True
-
-    def hash_custom_key(self, value):
-        return self.crypto.hash(value + ":" + self.env_id)
-
     def prepare_filter_params(self, **filter_kwargs):
         filter_params = {}
         for k in ["key", "key2", "key3", "profile_key"]:
             if filter_kwargs.get(k):
                 if filter_kwargs.get(k, None) and isinstance(filter_kwargs[k], list):
-                    filter_params[k] = [self.hash_custom_key(x) for x in filter_kwargs[k]]
+                    filter_params[k] = [get_salted_hash(x, self.env_id) for x in filter_kwargs[k]]
                 elif filter_kwargs.get(k, None):
-                    filter_params[k] = self.hash_custom_key(filter_kwargs[k])
+                    filter_params[k] = get_salted_hash(filter_kwargs[k], self.env_id)
         if filter_kwargs.get("range_key", None):
             filter_params["range_key"] = filter_kwargs["range_key"]
         return filter_params
 
     def encrypt_record(self, record):
-        res = dict(record)
-        body = {"meta": {}, "payload": None}
-        for k in ["key", "key2", "key3", "profile_key"]:
-            if res.get(k):
-                body["meta"][k] = res.get(k)
-                res[k] = self.hash_custom_key(res[k])
-        if res.get("body"):
-            body["payload"] = res.get("body")
-
-        [enc_data, key_version] = self.crypto.encrypt(json.dumps(body))
-        res["body"] = enc_data
-        res["version"] = key_version
-        return res
+        return encrypt_record(self.crypto, record, self.env_id)
 
     def decrypt_record(self, record):
-        res = dict(record)
-        if res.get("body"):
-            res["body"] = self.crypto.decrypt(res["body"], res["version"])
-            if self.is_json(res["body"]):
-                body = json.loads(res["body"])
-                if body.get("payload"):
-                    res["body"] = body.get("payload")
-                else:
-                    del res["body"]
-                for k in ["key", "key2", "key3", "profile_key"]:
-                    if record.get(k) and body["meta"].get(k):
-                        res[k] = body["meta"][k]
-        return res
+        return decrypt_record(self.crypto, record)
 
     def get_midpop_country_codes(self):
         r = requests.get(self.PORTALBACKEND_URI + "/countries")

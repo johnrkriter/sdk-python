@@ -43,11 +43,6 @@ PREPARED_DATA_BY_VERSION = {
     ],
 }
 
-PREPARED_HASH = {
-    "hash": "e3937cd968975a95dfd22424ac9370c1e1239d97cc23a2310b807bdd8b1c7a9f",
-    "plaintext": "InCountry",
-}
-
 
 @pytest.mark.happy_path
 def test_pack_unpack():
@@ -128,13 +123,6 @@ def test_dec(ciphertext, plaintext, password):
     dec = cipher.decrypt(ciphertext)
 
     assert dec == plaintext
-
-
-@pytest.mark.happy_path
-def test_hash():
-    cipher = InCrypto("password")
-
-    assert PREPARED_HASH["hash"] == cipher.hash(PREPARED_HASH["plaintext"])
 
 
 @pytest.mark.happy_path
