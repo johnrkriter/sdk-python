@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import os
 import json
+from typing import List, Dict, Union
 
 import requests
 
@@ -113,7 +114,7 @@ class Storage(object):
         key3: str = None,
         profile_key: str = None,
         range_key: int = None,
-    ):
+    ) -> Dict:
         record = {}
         for k in ["key", "body", "key2", "key3", "profile_key", "range_key"]:
             if locals().get(k, None):
@@ -126,7 +127,7 @@ class Storage(object):
 
     @validate_model(Country)
     @validate_model(RecordListForBatch)
-    def batch_write(self, country: str, records: list):
+    def batch_write(self, country: str, records: list) -> Dict:
         encrypted_records = [self.encrypt_record(record) for record in records]
         data_to_send = {"records": encrypted_records}
 
@@ -136,7 +137,7 @@ class Storage(object):
         return {"records": records}
 
     @validate_model(Country)
-    def update_one(self, country: str, filters: dict, **record_kwargs):
+    def update_one(self, country: str, filters: dict, **record_kwargs) -> Dict:
         existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
 
         if existing_records_response["meta"]["total"] >= 2:
@@ -153,7 +154,7 @@ class Storage(object):
 
     @validate_model(Country)
     @validate_model(Record)
-    def read(self, country: str, key: str):
+    def read(self, country: str, key: str) -> Dict:
         key = get_salted_hash(key, self.env_id)
         response = self.request(country, path="/" + key)
         Storage.validate_response(response, record_schema)
@@ -166,16 +167,15 @@ class Storage(object):
         country: str,
         limit: int = None,
         offset: int = None,
-        key: str = None,
-        body: str = None,
-        key2: str = None,
-        key3: str = None,
-        profile_key: str = None,
-        range_key: int = None,
-        version: int = None,
-    ):
+        key: Union[str, List[str], Dict] = None,
+        key2: Union[str, List[str], Dict] = None,
+        key3: Union[str, List[str], Dict] = None,
+        profile_key: Union[str, List[str], Dict] = None,
+        range_key: Union[int, List[int], Dict] = None,
+        version: Union[int, List[int], Dict] = None,
+    ) -> Dict:
         filter_params = self.prepare_filter_params(
-            key=key, body=body, key2=key2, key3=key3, profile_key=profile_key, range_key=range_key, version=version,
+            key=key, key2=key2, key3=key3, profile_key=profile_key, range_key=range_key, version=version,
         )
         options = {"limit": limit, "offset": offset}
 
@@ -207,20 +207,18 @@ class Storage(object):
         self,
         country: str,
         offset: int = None,
-        key: str = None,
-        body: str = None,
-        key2: str = None,
-        key3: str = None,
-        profile_key: str = None,
-        range_key: int = None,
-        version: int = None,
-    ):
+        key: Union[str, List[str], Dict] = None,
+        key2: Union[str, List[str], Dict] = None,
+        key3: Union[str, List[str], Dict] = None,
+        profile_key: Union[str, List[str], Dict] = None,
+        range_key: Union[int, List[int], Dict] = None,
+        version: Union[int, List[int], Dict] = None,
+    ) -> Dict:
         result = self.find(
             country=country,
             limit=1,
             offset=offset,
             key=key,
-            body=body,
             key2=key2,
             key3=key3,
             profile_key=profile_key,
@@ -231,14 +229,14 @@ class Storage(object):
 
     @validate_model(Country)
     @validate_model(Record)
-    def delete(self, country: str, key: str):
+    def delete(self, country: str, key: str) -> Dict:
         key = get_salted_hash(key, self.env_id)
         self.request(country, path="/" + key, method="DELETE")
         return {"success": True}
 
     @validate_model(Country)
     @validate_model(FindFilter)
-    def migrate(self, country: str, limit: int = None):
+    def migrate(self, country: str, limit: int = None) -> Dict:
         if not self.encrypt:
             raise StorageClientError("Migration not supported when encryption is off")
 
