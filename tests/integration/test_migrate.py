@@ -19,7 +19,7 @@ COUNTRY = os.environ.get("INT_INC_COUNTRY")
 @pytest.mark.parametrize("encrypt", [False], ids=["not encrypted"])
 def test_migrate_should_raise_error_without_encryption(storage: Storage, encrypt: bool) -> None:
 
-    storage.migrate.when.called_with(COUNTRY).should.have.raised(
+    storage.migrate.when.called_with(country=COUNTRY).should.have.raised(
         StorageClientError, re.compile(r"Migration not supported when encryption is off"),
     )
 

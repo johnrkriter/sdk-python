@@ -7,7 +7,7 @@ import sure
 import httpretty
 from cryptography.fernet import Fernet
 
-from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor, InCrypto
+from incountry import Storage, StorageServerError, StorageClientError, SecretKeyAccessor, InCrypto, RecordListForBatch
 
 POPAPI_URL = "https://popapi.com:8082"
 COUNTRY = "us"
@@ -77,7 +77,7 @@ def test_write(client, record, encrypt):
 
     write_res = client(encrypt).write(country=COUNTRY, **record)
     write_res.should.have.key("record")
-    write_res["record"].should.be.equal(record)
+    assert record.items() <= write_res["record"].items()
 
     received_record = json.loads(httpretty.last_request().body)
 
@@ -102,7 +102,7 @@ def test_write_with_keys_data(client, record, encrypt, keys_data):
 
     write_res = client(encrypt=encrypt, secret_accessor=secret_accessor).write(country=COUNTRY, **record)
     write_res.should.have.key("record")
-    write_res["record"].should.be.equal(record)
+    assert record.items() <= write_res["record"].items()
 
     received_record = json.loads(httpretty.last_request().body)
 
@@ -129,7 +129,7 @@ def test_batch_write(client, records, encrypt):
 
     batch_res = client(encrypt).batch_write(country=COUNTRY, records=records)
     batch_res.should.have.key("records")
-    batch_res["records"].should.be.equal(records)
+    batch_res["records"].should.be.equal(RecordListForBatch(records=records).records)
 
     received_records = json.loads(httpretty.last_request().body)
     received_records.should.have.key("records")
@@ -513,48 +513,6 @@ def test_migrate(client, records, keys_data_old, keys_data_new):
 
         if original_stored_record.get("body", None):
             assert received_record["body"] != original_stored_record["body"]
-
-
-@httpretty.activate
-@pytest.mark.parametrize("record", [TEST_RECORDS[-1]])
-@pytest.mark.parametrize("update_key", ["key", "key2", "key3", "profile_key", "range_key"])
-@pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.happy_path
-def test_update(client, record, update_key, encrypt):
-    stored_record = client(encrypt).encrypt_record(dict(record))
-
-    httpretty.register_uri(httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY, body="OK")
-    httpretty.register_uri(
-        httpretty.POST,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps(get_default_find_response(1, [stored_record])),
-    )
-
-    data_for_update = dict(
-        [(update_key, record[update_key] + 1 if isinstance(record[update_key], int) else record[update_key] + "1",)]
-    )
-
-    update_res = client(encrypt).update_one(
-        country=COUNTRY, filters=dict([(update_key, record[update_key])]), **data_for_update
-    )
-    update_res.should.have.key("record")
-    received_record = json.loads(httpretty.last_request().body)
-
-    for k in ["body", "key", "key2", "key3", "profile_key", "range_key"]:
-        if k == update_key:
-            assert update_res["record"][k] == data_for_update[k]
-        else:
-            assert update_res["record"][k] == record[k]
-
-    if record.get("range_key", None) and update_key != "range_key":
-        assert received_record["range_key"] == record["range_key"]
-
-    if record.get("range_key", None) and update_key == "range_key":
-        assert received_record["range_key"] == data_for_update["range_key"]
-
-    for k in ["body", "key", "key2", "key3", "profile_key"]:
-        if record.get(k, None):
-            assert received_record[k] != record[k]
 
 
 @httpretty.activate

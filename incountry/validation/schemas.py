@@ -49,6 +49,7 @@ custom_encryption_configurations_schema = {
         },
     },
 }
+
 record_schema = {
     "type": "object",
     "required": ["key", "version"],

@@ -10,11 +10,12 @@ from .validation.validator import validate, validate_custom_encryption
 from .secret_key_accessor import SecretKeyAccessor
 from .exceptions import StorageClientError, StorageServerError, InCryptoException
 from .validation.schemas import (
-    batch_records_schema,
     find_response_schema,
     record_schema,
     write_response_schema,
 )
+from .validation.validate_model import validate_model
+from .models import Record, RecordListForBatch, Country, FindFilter
 from .__version__ import __version__
 
 
@@ -99,24 +100,31 @@ class Storage(object):
         version_to_use = next((c["version"] for c in configs if c.get("isCurrent", False) is True), None)
         self.crypto.set_custom_encryption(configs, version_to_use)
 
-    def write(self, country: str, key: str, **record_kwargs):
-        country = country.lower()
-        data = {"key": key}
+    @validate_model(Country)
+    @validate_model(Record)
+    def write(
+        self,
+        country: str,
+        key: str,
+        body: str = None,
+        key2: str = None,
+        key3: str = None,
+        profile_key: str = None,
+        range_key: int = None,
+    ):
+        record = {}
+        for k in ["key", "body", "key2", "key3", "profile_key", "range_key"]:
+            if locals().get(k, None):
+                record[k] = locals().get(k, None)
 
-        for k in ["body", "key2", "key3", "profile_key", "range_key"]:
-            if record_kwargs.get(k):
-                data[k] = record_kwargs.get(k)
-
-        data_to_send = self.encrypt_record(data)
-
+        data_to_send = self.encrypt_record(record)
         response = self.request(country, method="POST", data=json.dumps(data_to_send))
         Storage.validate_response(response, write_response_schema)
+        return {"record": record}
 
-        return {"record": {"key": key, **record_kwargs}}
-
+    @validate_model(Country)
+    @validate_model(RecordListForBatch)
     def batch_write(self, country: str, records: list):
-        Storage.try_validate(records, batch_records_schema, StorageClientError, "Invalid records for batch_write")
-
         encrypted_records = [self.encrypt_record(record) for record in records]
         data_to_send = {"records": encrypted_records}
 
@@ -125,8 +133,8 @@ class Storage(object):
 
         return {"records": records}
 
+    @validate_model(Country)
     def update_one(self, country: str, filters: dict, **record_kwargs):
-        country = country.lower()
         existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
 
         if existing_records_response["meta"]["total"] >= 2:
@@ -141,21 +149,32 @@ class Storage(object):
 
         return {"record": updated_record}
 
+    @validate_model(Country)
+    @validate_model(Record)
     def read(self, country: str, key: str):
-        country = country.lower()
         key = self.hash_custom_key(key)
         response = self.request(country, path="/" + key)
         Storage.validate_response(response, record_schema)
         return {"record": self.decrypt_record(response)}
 
-    def find(self, country: str, limit: int = FIND_LIMIT, offset: int = 0, **filter_kwargs):
-        if not isinstance(limit, int) or limit <= 0 or limit > self.FIND_LIMIT:
-            raise StorageClientError("limit should be an integer > 0 and <= %s" % self.FIND_LIMIT)
-
-        if not isinstance(offset, int) or offset < 0:
-            raise StorageClientError("limit should be an integer >= 0")
-
-        filter_params = self.prepare_filter_params(**filter_kwargs)
+    @validate_model(Country)
+    @validate_model(FindFilter)
+    def find(
+        self,
+        country: str,
+        limit: int = None,
+        offset: int = None,
+        key: str = None,
+        body: str = None,
+        key2: str = None,
+        key3: str = None,
+        profile_key: str = None,
+        range_key: int = None,
+        version: int = None,
+    ):
+        filter_params = self.prepare_filter_params(
+            key=key, body=body, key2=key2, key3=key3, profile_key=profile_key, range_key=range_key, version=version,
+        )
         options = {"limit": limit, "offset": offset}
 
         response = self.request(
@@ -180,17 +199,44 @@ class Storage(object):
 
         return result
 
-    def find_one(self, offset=0, **kwargs):
-        result = self.find(offset=offset, limit=1, **kwargs)
+    @validate_model(Country)
+    @validate_model(FindFilter)
+    def find_one(
+        self,
+        country: str,
+        offset: int = None,
+        key: str = None,
+        body: str = None,
+        key2: str = None,
+        key3: str = None,
+        profile_key: str = None,
+        range_key: int = None,
+        version: int = None,
+    ):
+        result = self.find(
+            country=country,
+            limit=1,
+            offset=offset,
+            key=key,
+            body=body,
+            key2=key2,
+            key3=key3,
+            profile_key=profile_key,
+            range_key=range_key,
+            version=version,
+        )
         return {"record": result["records"][0]} if len(result["records"]) else None
 
+    @validate_model(Country)
+    @validate_model(Record)
     def delete(self, country: str, key: str):
-        country = country.lower()
         key = self.hash_custom_key(key)
         self.request(country, path="/" + key, method="DELETE")
         return {"success": True}
 
-    def migrate(self, country: str, limit: int = FIND_LIMIT):
+    @validate_model(Country)
+    @validate_model(FindFilter)
+    def migrate(self, country: str, limit: int = None):
         if not self.encrypt:
             raise StorageClientError("Migration not supported when encryption is off")
 
@@ -198,6 +244,7 @@ class Storage(object):
 
         find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
 
+        print(find_res["records"])
         self.batch_write(country=country, records=find_res["records"])
 
         return {
