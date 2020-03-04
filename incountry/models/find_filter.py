@@ -16,7 +16,7 @@ INT_OPERATORS = flatten(INT_OPERATOR_GROUPS)
 
 
 class FindFilter(BaseModel):
-    limit: conint(le=FIND_LIMIT, gt=0, strict=True) = FIND_LIMIT
+    limit: conint(ge=1, le=FIND_LIMIT, strict=True) = FIND_LIMIT
     offset: conint(ge=0, strict=True) = 0
     key: Union[StrictStr, List[StrictStr], Dict] = None
     key2: Union[StrictStr, List[StrictStr], Dict] = None
