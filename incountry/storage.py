@@ -244,7 +244,6 @@ class Storage(object):
 
         find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
 
-        print(find_res["records"])
         self.batch_write(country=country, records=find_res["records"])
 
         return {
