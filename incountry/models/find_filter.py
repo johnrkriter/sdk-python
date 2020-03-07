@@ -1,47 +1,76 @@
 from functools import reduce
-from typing import List, Union, Dict
+from typing import Union, Dict
 
-from pydantic import BaseModel, conint, StrictStr, StrictInt, validator
+from pydantic import (
+    BaseModel,
+    StrictStr,
+    StrictInt,
+    conint,
+    conlist,
+    constr,
+    validator,
+)
 
 
-def flatten(l: list) -> list:
-    return [item for sublist in l for item in sublist]
+class Operators(str):
+    NOT = "$not"
+    GT = "$gt"
+    GTE = "$gte"
+    LT = "$lt"
+    LTE = "$lte"
 
 
 FIND_LIMIT = 100
 
-STR_OPERATORS = ["$not"]
-INT_OPERATOR_GROUPS = [STR_OPERATORS, ["$gt", "$gte"], ["$lt", "$lte"]]
-INT_OPERATORS = flatten(INT_OPERATOR_GROUPS)
+STR_OPERATORS = [Operators.NOT]
+COMPARISON_GROUPS = [
+    [Operators.GT, Operators.GTE],
+    [Operators.LT, Operators.LTE],
+]
+INT_OPERATORS = [
+    Operators.NOT,
+    Operators.GT,
+    Operators.GTE,
+    Operators.LT,
+    Operators.LTE,
+]
+
+NonEmptyStr = constr(min_length=1)
+NonEmptyStrList = conlist(StrictStr, min_items=1)
+NonEmptyIntList = conlist(StrictInt, min_items=1)
+OperatorsStrDict = Dict[NonEmptyStr, Union[StrictStr, NonEmptyStrList]]
+OperatorsIntDict = Dict[NonEmptyStr, Union[StrictInt, NonEmptyIntList]]
+StrKey = Union[StrictStr, NonEmptyStrList, OperatorsStrDict]
+IntKey = Union[StrictInt, NonEmptyIntList, OperatorsIntDict]
 
 
 class FindFilter(BaseModel):
     limit: conint(ge=1, le=FIND_LIMIT, strict=True) = FIND_LIMIT
     offset: conint(ge=0, strict=True) = 0
-    key: Union[StrictStr, List[StrictStr], Dict] = None
-    key2: Union[StrictStr, List[StrictStr], Dict] = None
-    key3: Union[StrictStr, List[StrictStr], Dict] = None
-    profile_key: Union[StrictStr, List[StrictStr], Dict] = None
-    range_key: Union[StrictInt, List[StrictInt], Dict] = None
-    version: Union[StrictInt, List[StrictInt], Dict] = None
+    key: StrKey = None
+    key2: StrKey = None
+    key3: StrKey = None
+    profile_key: StrKey = None
+    range_key: IntKey = None
+    version: IntKey = None
 
     @validator("*", pre=True)
-    def check_dicts(cls, value, values, config, field):
-        if field.name in ["limit", "offset"]:
+    def check_dicts_pre(cls, value, values, config, field):
+        if not isinstance(value, dict):
             return value
 
-        if isinstance(value, dict) and len(value) == 0:
+        if len(value) == 0:
             raise ValueError("Filter cannot be empty dict")
 
-        if isinstance(value, dict) and field.type_.__args__[0] is StrictInt:
+        if field.type_.__args__[0] is StrictInt:
             for key in value:
                 if key not in INT_OPERATORS:
                     raise ValueError(
                         "Incorrect dict filter. Must contain only the following keys: {}".format(INT_OPERATORS)
                     )
-            for operator_group in INT_OPERATOR_GROUPS:
+            for operator_group in COMPARISON_GROUPS:
                 total_operators_from_group = reduce(
-                    lambda agg, operator: agg + 1 if operator in value else agg, operator_group, 0
+                    lambda agg, operator: agg + 1 if operator in value else agg, operator_group, 0,
                 )
                 if total_operators_from_group > 1:
                     raise ValueError(
@@ -50,11 +79,23 @@ class FindFilter(BaseModel):
                         )
                     )
 
-        if isinstance(value, dict) and field.type_.__args__[0] is StrictStr:
+        if field.type_.__args__[0] is StrictStr:
             for key in value:
                 if key not in STR_OPERATORS:
-                    raise ValueError(
-                        "Incorrect dict filter. Must contain only the following keys: {}".format(STR_OPERATORS)
-                    )
+                    raise ValueError(f"Incorrect dict filter. Must contain only the following keys: {STR_OPERATORS}")
 
         return value
+
+    @validator("*")
+    def check_dicts(cls, value, values, config, field):
+        if not isinstance(value, dict):
+            return value
+
+        if len(value) == 0:
+            raise ValueError("Filter cannot be empty dict")
+
+        return value
+
+    @staticmethod
+    def getFindLimit():
+        return FIND_LIMIT

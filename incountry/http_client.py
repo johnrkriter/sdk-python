@@ -4,7 +4,7 @@ import requests
 import json
 
 from .exceptions import StorageServerError
-from .models import HttpRecordWrite, HttpRecordRead, HttpRecordFind, HttpRecordDelete
+from .models import HttpRecordWrite, HttpRecordBatchWrite, HttpRecordRead, HttpRecordFind, HttpRecordDelete
 from .validation.validate_http_response import validate_http_response
 from .__version__ import __version__
 
@@ -19,16 +19,17 @@ class HttpClient:
         self.env_id = env_id
         self.debug = debug
 
-        self.log(
-            "Connecting to storage endpoint: ", HttpClient.DEFAULT_ENDPOINT if self.endpoint is None else self.endpoint
-        )
+        if self.endpoint is None:
+            self.log(f"Connecting to default endpoint: {HttpClient.DEFAULT_ENDPOINT}")
+        else:
+            self.log(f"Connecting to custom endpoint: {self.endpoint}")
 
     @validate_http_response(HttpRecordWrite)
     def write(self, country, data):
         response = self.request(country, method="POST", data=json.dumps(data))
         return response
 
-    @validate_http_response(HttpRecordWrite)
+    @validate_http_response(HttpRecordBatchWrite)
     def batch_write(self, country, data):
         response = self.request(country, path="/batchWrite", method="POST", data=json.dumps(data))
         return response

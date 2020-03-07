@@ -1,6 +1,6 @@
 import os
 import pytest
-import sure
+import sure  # noqa: F401
 import base64
 
 from cryptography.fernet import Fernet

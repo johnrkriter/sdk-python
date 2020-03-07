@@ -195,10 +195,6 @@ class InCrypto:
         return InCrypto.CUSTOM_ENCRYPTION_VERSION_PREFIX + base64.b64encode(version.encode("utf8")).decode("utf8")
 
     @staticmethod
-    def unpack_custom_encryption_version(encoded_version):
-        return base64.b64decode(encoded_version[1:]).decode("utf8")
-
-    @staticmethod
     def pack_base64(salt, iv, enc, auth_tag):
         parts = [salt, iv, enc, auth_tag]
         joined_parts = b"".join(parts)

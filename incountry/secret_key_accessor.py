@@ -1,9 +1,6 @@
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
+from pydantic import ValidationError
 
-from .exceptions import SecretKeyAccessorException
-
-from .validation.schemas import secret_key_accessor_response_schema
+from .exceptions import InCryptoException
 
 
 class SecretKeyAccessor:
@@ -11,12 +8,12 @@ class SecretKeyAccessor:
 
     def __init__(self, accessor_function):
         if not callable(accessor_function):
-            raise SecretKeyAccessorException("Argument accessor_function must be a function")
+            raise InCryptoException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
 
     def get_secret(self, version=None, ignore_length_validation=False):
         if version is not None and not isinstance(version, int):
-            raise SecretKeyAccessorException("Invalid secret version requested. Version should be of type `int`")
+            raise InCryptoException("Invalid secret version requested. Version should be of type `int`")
 
         secrets_data = self._accessor_function()
 
@@ -24,9 +21,11 @@ class SecretKeyAccessor:
             return (secrets_data, SecretKeyAccessor.DEFAULT_VERSION, False)
 
         try:
-            validate(instance=secrets_data, schema=secret_key_accessor_response_schema)
+            from .models import SecretsData
+
+            SecretsData.validate(secrets_data)
         except ValidationError as e:
-            raise SecretKeyAccessorException("SecretKeyAccessor validation error") from e
+            raise InCryptoException("SecretKeyAccessor validation error") from e
 
         from .incountry_crypto import InCrypto
 
@@ -37,7 +36,7 @@ class SecretKeyAccessor:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
                 if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise SecretKeyAccessorException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
+                    raise InCryptoException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
                 return (secret, version_to_search, is_key)
 
-        raise SecretKeyAccessorException("Secret not found for version {}".format(version_to_search))
+        raise InCryptoException("Secret not found for version {}".format(version_to_search))

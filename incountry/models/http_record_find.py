@@ -12,7 +12,7 @@ class MetaInfo(BaseModel):
     total: conint(ge=0, strict=True)
 
 
-class HttpRecordFind(BaseModel):
+class HttpRecordBody(BaseModel):
     data: List[Record]
     meta: MetaInfo
 
@@ -23,3 +23,7 @@ class HttpRecordFind(BaseModel):
     @validator("meta")
     def meta_to_dict(cls, value):
         return value.__dict__
+
+
+class HttpRecordFind(BaseModel):
+    body: HttpRecordBody

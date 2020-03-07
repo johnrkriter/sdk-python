@@ -1,7 +1,3 @@
-class SecretKeyAccessorException(Exception):
-    pass
-
-
 class InCryptoException(Exception):
     pass
 

@@ -14,11 +14,7 @@ flake8 = "*"
 
 [packages]
 requests = "*"
-setuptools = "*"
-wheel = "*"
-twine = "*"
 cryptography = "*"
-jsonschema = "*"
 pydantic = "*"
 wrapt = "*"
 

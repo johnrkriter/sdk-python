@@ -1,8 +1,8 @@
 import pytest
-import sure
+import sure  # noqa: F401
 
 
-from incountry import SecretKeyAccessor, SecretKeyAccessorException
+from incountry import SecretKeyAccessor, InCryptoException
 
 
 @pytest.mark.parametrize("password", ["password"])
@@ -75,20 +75,20 @@ def test_get_secret_ignoring_length_validation(keys_data, proper_version, proper
 
 @pytest.mark.error_path
 def test_non_callable_accessor_function():
-    SecretKeyAccessor.when.called_with("password").should.have.raised(SecretKeyAccessorException)
+    SecretKeyAccessor.when.called_with("password").should.have.raised(InCryptoException)
 
 
 @pytest.mark.error_path
 def test_incorrect_version_requested():
     secret_accessor = SecretKeyAccessor(lambda: "some password")
-    secret_accessor.get_secret.when.called_with("non int").should.have.raised(SecretKeyAccessorException)
+    secret_accessor.get_secret.when.called_with("non int").should.have.raised(InCryptoException)
 
 
 @pytest.mark.parametrize("keys_data", [{"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}])
 @pytest.mark.error_path
 def test_non_existing_version_requested(keys_data):
     secret_accessor = SecretKeyAccessor(lambda: keys_data)
-    secret_accessor.get_secret.when.called_with(version=0).should.have.raised(SecretKeyAccessorException)
+    secret_accessor.get_secret.when.called_with(version=0).should.have.raised(InCryptoException)
 
 
 @pytest.mark.parametrize(
@@ -108,4 +108,4 @@ def test_non_existing_version_requested(keys_data):
 @pytest.mark.error_path
 def test_invalid_keys_object(keys_data):
     secret_accessor = SecretKeyAccessor(lambda: keys_data)
-    secret_accessor.get_secret.when.called_with().should.have.raised(SecretKeyAccessorException)
+    secret_accessor.get_secret.when.called_with().should.have.raised(InCryptoException)

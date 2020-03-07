@@ -30,8 +30,4 @@ class CustomEncryptionOptions(BaseModel):
 
     @validator("configs", each_item=True)
     def configs_to_dict(cls, value):
-        return value.__dict__
-
-    # @validator("options", each_item=True)
-    # def record_to_dict(cls, value):
-    #     return value.__dict__
+        return value.dict()

@@ -3,7 +3,7 @@ import json
 import os
 
 import pytest
-import sure
+import sure  # noqa: F401
 import httpretty
 from cryptography.fernet import Fernet
 
@@ -13,8 +13,9 @@ from incountry import (
     StorageClientError,
     SecretKeyAccessor,
     InCrypto,
+    HttpClient,
+    FindFilter,
     RecordListForBatch,
-    encrypt_record,
     get_salted_hash,
 )
 
@@ -48,7 +49,7 @@ def omit(d, keys):
 def mock_backend():
     httpretty.register_uri(
         httpretty.GET,
-        Storage.PORTALBACKEND_URI + "/countries",
+        HttpClient.PORTALBACKEND_URI + "/countries",
         body=json.dumps({"countries": [{"id": "RU", "direct": True}, {"id": "AG", "direct": False}]}),
     )
 
@@ -253,29 +254,11 @@ def test_read_multiple_keys(client, record_1, record_2, encrypt, keys_data_old, 
 
 
 @httpretty.activate
-@pytest.mark.parametrize("record", TEST_RECORDS[0])
-@pytest.mark.happy_path
-def test_read_response_validation(client, record):
-    key = str(uuid.uuid1())
-    key_hash = get_key_hash(key)
-
-    httpretty.register_uri(
-        httpretty.GET,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/" + key_hash,
-        body=json.dumps({"key": key_hash}),
-    )
-
-    client().read.when.called_with(country=COUNTRY, key=key).should.have.raised(
-        StorageServerError, "Response validation failed"
-    )
-
-
-@httpretty.activate
 @pytest.mark.parametrize("record", TEST_RECORDS)
 @pytest.mark.parametrize("encrypt", [True, False])
 @pytest.mark.happy_path
 def test_delete(client, record, encrypt):
-    response = {"result": "OK"}
+    response = {}
 
     stored_record = dict(record)
     stored_record = client(encrypt).encrypt_record(stored_record)
@@ -328,7 +311,7 @@ def test_find(client, query, records, encrypt):
     received_record.should.have.key("filter")
     received_record.should.have.key("options")
     received_record["options"].should.equal(
-        {"limit": query.get("limit", Storage.FIND_LIMIT), "offset": query.get("offset", 0)}
+        {"limit": query.get("limit", FindFilter.getFindLimit()), "offset": query.get("offset", 0)}
     )
 
     if query.get("range_key", None):
@@ -345,21 +328,6 @@ def test_find(client, query, records, encrypt):
         for k in ["body", "key", "key2", "key3", "profile_key"]:
             if match.get(k, None):
                 assert data_record[k] == match[k]
-
-
-@httpretty.activate
-@pytest.mark.parametrize(
-    "query,records", [({"key": "key1"}, TEST_RECORDS)],
-)
-@pytest.mark.happy_path
-def test_find_response_validation(client, query, records):
-    httpretty.register_uri(
-        httpretty.POST, POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find", body=json.dumps(records)
-    )
-
-    client().find.when.called_with(country=COUNTRY, **query).should.have.raised(
-        StorageServerError, "Response validation failed"
-    )
 
 
 @httpretty.activate
@@ -537,9 +505,9 @@ def test_default_endpoint(client, record, country, countries):
 
     midpop_ids = [c["id"].lower() for c in countries if c["direct"]]
     is_midpop = country in midpop_ids
-    endpoint = Storage.get_midpop_url(country) if is_midpop else Storage.DEFAULT_ENDPOINT
+    endpoint = HttpClient.get_midpop_url(country) if is_midpop else HttpClient.DEFAULT_ENDPOINT
 
-    countries_url = Storage.PORTALBACKEND_URI + "/countries"
+    countries_url = HttpClient.PORTALBACKEND_URI + "/countries"
     httpretty.register_uri(httpretty.GET, countries_url, body=json.dumps({"countries": countries}))
 
     read_url = endpoint + "/v2/storage/records/" + country + "/" + stored_record["key"]
@@ -884,5 +852,12 @@ def test_error_migrate_without_encryption(client):
 @pytest.mark.error_path
 def test_custom_enc_with_enc_disabled(client):
     client(encrypt=False).set_custom_encryption.when.called_with("").should.have.raised(
-        StorageClientError, "Cannot use custom encryption when encryption is off"
+        StorageClientError, "This method is only allowed with encryption enabled"
+    )
+
+
+@pytest.mark.error_path
+def test_migrate_with_enc_disabled(client):
+    client(encrypt=False).migrate.when.called_with("").should.have.raised(
+        StorageClientError, "This method is only allowed with encryption enabled"
     )

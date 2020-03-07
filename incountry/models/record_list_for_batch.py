@@ -10,4 +10,4 @@ class RecordListForBatch(BaseModel):
 
     @validator("records", each_item=True)
     def record_to_dict(cls, value):
-        return value.__dict__
+        return value.dict()

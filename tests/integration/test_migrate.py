@@ -1,7 +1,7 @@
 from typing import List, Dict
 import re
 import os
-import sure
+import sure  # noqa: F401
 import pytest
 from incountry import (
     StorageClientError,
