@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, conint, validator
 
-from .record import Record
+from .record_from_server import RecordFromServer
 
 
 class MetaInfo(BaseModel):
@@ -13,7 +13,7 @@ class MetaInfo(BaseModel):
 
 
 class HttpRecordBody(BaseModel):
-    data: List[Record]
+    data: List[RecordFromServer]
     meta: MetaInfo
 
     @validator("data", each_item=True)

@@ -4,8 +4,7 @@ from typing import List, Dict, Union, Any
 from .incountry_crypto import InCrypto
 from .crypto_utils import decrypt_record, encrypt_record, get_salted_hash
 from .exceptions import StorageServerError, InCryptoException
-from .validation.validate_model import validate_model
-from .validation.validate_encryption_enabled import validate_encryption_enabled
+from .validation import validate_model, validate_encryption_enabled
 from .http_client import HttpClient
 from .models import Country, CustomEncryptionOptions, FindFilter, Record, RecordListForBatch, StorageWithEnv
 
@@ -188,9 +187,7 @@ class Storage(object):
     @validate_model(FindFilter)
     def migrate(self, country: str, limit: int = None) -> Dict[str, int]:
         current_secret_version = self.crypto.get_current_secret_version()
-
         find_res = self.find(country=country, limit=limit, version={"$not": current_secret_version})
-
         self.batch_write(country=country, records=find_res["records"])
 
         return {

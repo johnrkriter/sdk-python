@@ -1,6 +1,7 @@
 from pydantic import ValidationError
 
 from .exceptions import InCryptoException
+from .validation.utils import get_formatter_validation_error
 
 
 class SecretKeyAccessor:
@@ -25,7 +26,9 @@ class SecretKeyAccessor:
 
             SecretsData.validate(secrets_data)
         except ValidationError as e:
-            raise InCryptoException("SecretKeyAccessor validation error") from e
+            raise InCryptoException(
+                f"SecretKeyAccessor validation error: {get_formatter_validation_error(e)}"
+            ) from None
 
         from .incountry_crypto import InCrypto
 

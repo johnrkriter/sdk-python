@@ -6,7 +6,15 @@ import sure  # noqa: F401
 from pydantic import ValidationError
 
 
-from incountry.models import Country, CustomEncryptionOptions, FindFilter, Record, RecordListForBatch, StorageWithEnv
+from incountry.models import (
+    Country,
+    CustomEncryptionOptions,
+    FindFilter,
+    Record,
+    RecordFromServer,
+    RecordListForBatch,
+    StorageWithEnv,
+)
 from incountry import SecretKeyAccessor
 
 TEST_RECORDS = [
@@ -290,6 +298,23 @@ def test_valid_record(record):
 @pytest.mark.error_path
 def test_invalid_record(record):
     Record.when.called_with(**record).should.throw(ValidationError)
+
+
+@pytest.mark.parametrize("record", TEST_RECORDS)
+@pytest.mark.happy_path
+def test_valid_record_from_server(record):
+    record = {**record, "version": 1}
+    item = RecordFromServer(**record)
+
+    for key in ["key", "body", "key2", "key3", "profile_key", "range_key", "version"]:
+        if key in record:
+            assert getattr(item, key) == record[key]
+
+
+@pytest.mark.parametrize("record", TEST_RECORDS)
+@pytest.mark.error_path
+def test_invalid_record_from_server(record):
+    RecordFromServer.when.called_with(**record).should.throw(ValidationError)
 
 
 @pytest.mark.happy_path

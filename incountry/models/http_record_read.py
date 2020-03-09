@@ -1,10 +1,6 @@
-from pydantic import BaseModel, conint
+from pydantic import BaseModel
 
-from .record import Record
-
-
-class RecordFromServer(Record):
-    version: conint(ge=0, strict=True)
+from .record_from_server import RecordFromServer
 
 
 class HttpRecordRead(BaseModel):

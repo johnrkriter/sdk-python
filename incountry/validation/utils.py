@@ -21,13 +21,14 @@ def format_loc(error_loc_data):
     )
 
 
+def get_formatter_validation_error(e):
+    return reduce((lambda agg, error: f"{agg}\n  {format_loc(error['loc'])} - {error['msg']}"), e.errors(), "")
+
+
 def validate_model_wrapper(function, model, **kwargs):
     try:
         return model.validate(kwargs).dict()
     except ValidationError as e:
-
-        errors_report = reduce(
-            (lambda agg, error: f"{agg}\n  {format_loc(error['loc'])} - {error['msg']}"), e.errors(), ""
-        )
+        errors_report = get_formatter_validation_error(e)
         error_text = "Validation failed during {}():{}".format(function.__qualname__, errors_report)
         raise StorageClientError(error_text) from None

@@ -5,7 +5,7 @@ import json
 
 from .exceptions import StorageServerError
 from .models import HttpRecordWrite, HttpRecordBatchWrite, HttpRecordRead, HttpRecordFind, HttpRecordDelete
-from .validation.validate_http_response import validate_http_response
+from .validation import validate_http_response
 from .__version__ import __version__
 
 
@@ -42,7 +42,6 @@ class HttpClient:
     @validate_http_response(HttpRecordFind)
     def find(self, country, data):
         response = self.request(country, path="/find", method="POST", data=json.dumps(data))
-        # HttpClient.validate_response(response, find_response_schema)
         return response
 
     @validate_http_response(HttpRecordDelete)
