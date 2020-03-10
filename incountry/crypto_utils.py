@@ -60,7 +60,7 @@ def decrypt_record(crypto, record):
             if body.get("payload"):
                 res["body"] = body.get("payload")
             else:
-                del res["body"]
+                res["body"] = None
             for k in ["key", "key2", "key3", "profile_key"]:
                 if record.get(k) and body["meta"].get(k):
                     res[k] = body["meta"][k]
