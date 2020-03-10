@@ -1,12 +1,12 @@
-from pydantic import BaseModel, conlist, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, conlist, conint, StrictBool, StrictStr
 
 
 class Secret(BaseModel):
     secret: StrictStr
-    version: StrictInt
+    version: conint(strict=True, gt=0)
     isKey: StrictBool = False
 
 
 class SecretsData(BaseModel):
-    currentVersion: StrictInt
+    currentVersion: conint(strict=True, gt=0)
     secrets: conlist(Secret, min_items=1)

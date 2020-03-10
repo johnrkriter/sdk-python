@@ -82,10 +82,10 @@ def test_enc_dec(plaintext, secret_key_accessor):
     [
         SecretKeyAccessor(
             lambda: {
-                "currentVersion": 1,
+                "currentVersion": 2,
                 "secrets": [
-                    {"secret": "password0", "version": 0},
-                    {"secret": "12345678901234567890123456789012", "version": 1, "isKey": True},
+                    {"secret": "password1", "version": 1},
+                    {"secret": "12345678901234567890123456789012", "version": 2, "isKey": True},
                 ],
             }
         )

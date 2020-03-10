@@ -206,13 +206,13 @@ def test_read(client, record, encrypt):
     ],
 )
 @pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.parametrize("keys_data_old", [{"currentVersion": 0, "secrets": [{"secret": SECRET_KEY, "version": 0}]}])
+@pytest.mark.parametrize("keys_data_old", [{"currentVersion": 1, "secrets": [{"secret": SECRET_KEY, "version": 1}]}])
 @pytest.mark.parametrize(
     "keys_data_new",
     [
         {
-            "currentVersion": 1,
-            "secrets": [{"secret": SECRET_KEY, "version": 0}, {"secret": SECRET_KEY + "1", "version": 1}],
+            "currentVersion": 2,
+            "secrets": [{"secret": SECRET_KEY, "version": 1}, {"secret": SECRET_KEY + "2", "version": 2}],
         }
     ],
 )
@@ -438,13 +438,13 @@ def test_find_one(client, query, record, encrypt):
 
 @httpretty.activate
 @pytest.mark.parametrize("records", [TEST_RECORDS])
-@pytest.mark.parametrize("keys_data_old", [{"currentVersion": 0, "secrets": [{"secret": SECRET_KEY, "version": 0}]}])
+@pytest.mark.parametrize("keys_data_old", [{"currentVersion": 1, "secrets": [{"secret": SECRET_KEY, "version": 1}]}])
 @pytest.mark.parametrize(
     "keys_data_new",
     [
         {
-            "currentVersion": 1,
-            "secrets": [{"secret": SECRET_KEY, "version": 0}, {"secret": SECRET_KEY + "1", "version": 1}],
+            "currentVersion": 2,
+            "secrets": [{"secret": SECRET_KEY, "version": 1}, {"secret": SECRET_KEY + "2", "version": 2}],
         }
     ],
 )
