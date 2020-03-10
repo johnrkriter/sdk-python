@@ -213,7 +213,7 @@ class Storage(object):
         profile_key: Union[str, List[str], Dict] = None,
         range_key: Union[int, List[int], Dict] = None,
         version: Union[int, List[int], Dict] = None,
-    ) -> Dict:
+    ) -> Union[Dict, None]:
         result = self.find(
             country=country,
             limit=1,
