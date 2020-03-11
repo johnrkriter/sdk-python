@@ -40,12 +40,12 @@ Note: even though SDK uses PBKDF2 to generate a cryptographically strong encrypt
 ```python
 {
   "secrets": [{
-       "secret": <str>,
-       "version": <int>,   # Should be a positive integer
-	   "isKey": <bool>  # Should be True only for user-defined encryption keys
+       "secret": str,
+       "version": int, # Should be a positive integer
+	   "isKey": bool,  # Should be True only for user-defined encryption keys
     }
   }, ....],
-  "currentVersion": <int>,
+  "currentVersion": int,
 }
 ```
 
@@ -229,7 +229,7 @@ The return object looks like the following:
 ```python
 {
     "data": List,
-    "errors": List,   # optional
+    "errors": List, # optional
     "meta": {
         "limit": int,
         "offset": int,
