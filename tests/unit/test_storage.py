@@ -175,7 +175,9 @@ def test_read(client, record, encrypt):
 
     read_response = client(encrypt).read(country=COUNTRY, key=record["key"])
     read_response.should.have.key("record")
-    omit(read_response["record"], "version").should.be.equal(record)
+    for k in ["body", "key", "key2", "key3", "profile_key"]:
+        if record.get(k, None):
+            assert record[k] == read_response["record"][k]
 
 
 @httpretty.activate
@@ -431,7 +433,9 @@ def test_find_one(client, query, record, encrypt):
     find_one_response = client(encrypt).find_one(country=COUNTRY, **query)
     if record:
         find_one_response.should.have.key("record")
-        find_one_response["record"].should.equal(record)
+        for k in ["body", "key", "key2", "key3", "profile_key"]:
+            if record.get(k, None):
+                assert record[k] == find_one_response["record"][k]
     else:
         find_one_response.should.equal(record)
 
@@ -613,7 +617,9 @@ def test_custom_encryption_read(client, record, custom_encryption):
 
     res = client.read(country=country, key=record["key"])
 
-    omit(res["record"], "version").should.be.equal(record)
+    for k in ["body", "key", "key2", "key3", "profile_key"]:
+        if record.get(k, None):
+            assert record[k] == res["record"][k]
 
 
 @httpretty.activate
