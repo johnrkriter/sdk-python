@@ -227,7 +227,6 @@ def test_delete_valid_response(client, response):
     )
 
     res = client().delete(country=COUNTRY, key=key_hash)
-    print(111, res, response)
     assert res == response
 
 
