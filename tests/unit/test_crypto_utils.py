@@ -1,13 +1,7 @@
 import pytest
-import sure
+import sure  # noqa: F401
 
-from jsonschema.exceptions import ValidationError
-from incountry import (
-    decrypt_record,
-    encrypt_record,
-    get_salted_hash,
-    InCrypto,
-)
+from incountry import decrypt_record, encrypt_record, get_salted_hash, InCrypto, StorageClientError
 
 from incountry.crypto_utils import hash, is_json
 
@@ -27,7 +21,7 @@ PREPARED_HASH = {
 )
 @pytest.mark.happy_path
 def test_hash_custom_key_args_validation(value, salt, error):
-    get_salted_hash.when.called_with(value, salt).should.have.raised(ValidationError, error)
+    get_salted_hash.when.called_with(value, salt).should.have.raised(StorageClientError, error)
 
 
 @pytest.mark.parametrize(
@@ -39,7 +33,7 @@ def test_hash_custom_key_args_validation(value, salt, error):
 )
 @pytest.mark.happy_path
 def test_encrypt_record_args_validation(crypto, record, salt, error):
-    encrypt_record.when.called_with(crypto, record, salt).should.have.raised(ValidationError, error)
+    encrypt_record.when.called_with(crypto, record, salt).should.have.raised(StorageClientError, error)
 
 
 @pytest.mark.parametrize(
@@ -47,7 +41,7 @@ def test_encrypt_record_args_validation(crypto, record, salt, error):
 )
 @pytest.mark.happy_path
 def test_decrypt_record_args_validation(crypto, record, error):
-    decrypt_record.when.called_with(crypto, record).should.have.raised(ValidationError, error)
+    decrypt_record.when.called_with(crypto, record).should.have.raised(StorageClientError, error)
 
 
 @pytest.mark.parametrize(
