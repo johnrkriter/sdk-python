@@ -103,6 +103,10 @@ def test_non_existing_version_requested(keys_data):
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": "yes"}]},
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": 1}]},
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": True}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}, {"secret": "password", "version": 1}]},
+        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
+        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 0}]},
     ],
 )
 @pytest.mark.error_path
@@ -111,16 +115,3 @@ def test_invalid_keys_object(keys_data):
     secret_accessor.get_secret.when.called_with().should.have.raised(InCryptoException)
 
 
-@pytest.mark.parametrize(
-    "keys_data",
-    [
-        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
-        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}, {"secret": "password", "version": 1}]},
-        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
-        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 0}]},
-    ],
-)
-@pytest.mark.error_path
-def test_non_positive_versions_in_secrets_data(keys_data):
-    secret_accessor = SecretKeyAccessor(lambda: keys_data)
-    secret_accessor.get_secret.when.called_with().should.throw(InCryptoException, "ensure this value is greater than 0")

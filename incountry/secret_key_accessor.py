@@ -12,19 +12,26 @@ class SecretKeyAccessor:
             raise InCryptoException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
 
+    def validate_secrets_data(self, secrets_data):
+        from .models import SecretsData
+
+        if not isinstance(secrets_data, str):
+            SecretsData.validate(secrets_data)
+
+    def init(self):
+        secrets_data = self._accessor_function()
+        self.validate_secrets_data(secrets_data)
+
     def get_secret(self, version=None, ignore_length_validation=False):
         if version is not None and not isinstance(version, int):
             raise InCryptoException("Invalid secret version requested. Version should be of type `int`")
 
         secrets_data = self._accessor_function()
-
         if isinstance(secrets_data, str):
             return (secrets_data, SecretKeyAccessor.DEFAULT_VERSION, False)
 
         try:
-            from .models import SecretsData
-
-            SecretsData.validate(secrets_data)
+            self.validate_secrets_data(secrets_data)
         except ValidationError as e:
             raise InCryptoException(
                 f"SecretKeyAccessor validation error: {get_formatter_validation_error(e)}"

@@ -48,6 +48,7 @@ class Storage(object):
         self.encrypt = encrypt
         self.custom_encryption_configs = None
         self.crypto = InCrypto(secret_key_accessor) if self.encrypt else InCrypto()
+        secret_key_accessor.init()
 
         self.http_client = HttpClient(env_id=self.env_id, api_key=api_key, endpoint=endpoint, debug=self.debug,)
 

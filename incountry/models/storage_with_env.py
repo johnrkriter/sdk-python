@@ -43,6 +43,7 @@ class StorageWithEnv(BaseModel):
                 f"Encryption is On. "
                 f"Please provide a valid secret_key_accessor param of class {SecretKeyAccessor.__name__}"
             )
+
         return value
 
     @validator("endpoint", always=True, pre=True)
