@@ -14,12 +14,6 @@ SECRETS_DATA = {
     "currentVersion": 2,
 }
 
-ENDPOINT = "https://us.qa.incountry.io"
-API_KEY = "ntxeco.633d10bddfd9470d92b8171ba1939e7f"
-ENVIRONMENT_ID = "28aea35a-b8fa-47e0-8295-93743d4badb6"
-COUNTRY = "us"
-os.environ["INT_INC_COUNTRY"] = "us"
-
 
 @pytest.fixture
 def storage(encrypt: bool) -> Storage:
