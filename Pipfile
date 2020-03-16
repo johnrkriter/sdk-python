@@ -14,12 +14,9 @@ flake8 = "*"
 
 [packages]
 requests = "*"
-setuptools = "*"
-wheel = "*"
-twine = "*"
 cryptography = "*"
-jsonschema = "*"
 pydantic = "*"
+wrapt = "*"
 
 [requires]
 python_version = "3.7"

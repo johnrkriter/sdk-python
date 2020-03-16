@@ -3,7 +3,7 @@ import uuid
 from random import randint
 import operator
 from incountry import StorageServerError, Storage, RecordListForBatch
-import sure
+import sure  # noqa: F401
 import pytest
 from typing import Dict, List, Any
 

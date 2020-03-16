@@ -45,7 +45,7 @@ IntKey = Union[StrictInt, NonEmptyIntList, OperatorsIntDict]
 
 
 class FindFilter(BaseModel):
-    limit: conint(le=FIND_LIMIT, gt=0, strict=True) = FIND_LIMIT
+    limit: conint(ge=1, le=FIND_LIMIT, strict=True) = FIND_LIMIT
     offset: conint(ge=0, strict=True) = 0
     key: StrKey = None
     key2: StrKey = None
@@ -95,3 +95,7 @@ class FindFilter(BaseModel):
             raise ValueError("Filter cannot be empty dict")
 
         return value
+
+    @staticmethod
+    def getFindLimit():
+        return FIND_LIMIT

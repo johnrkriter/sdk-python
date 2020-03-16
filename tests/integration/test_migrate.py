@@ -1,7 +1,7 @@
 from typing import List, Dict
 import re
 import os
-import sure
+import sure  # noqa: F401
 import pytest
 from incountry import (
     StorageClientError,
@@ -20,7 +20,7 @@ COUNTRY = os.environ.get("INT_INC_COUNTRY")
 def test_migrate_should_raise_error_without_encryption(storage: Storage, encrypt: bool) -> None:
 
     storage.migrate.when.called_with(country=COUNTRY).should.have.raised(
-        StorageClientError, re.compile(r"Migration not supported when encryption is off"),
+        StorageClientError, re.compile(r"This method is only allowed with encryption enabled"),
     )
 
 
