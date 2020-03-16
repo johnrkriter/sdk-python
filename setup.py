@@ -20,7 +20,7 @@ AUTHOR = "InCountry"
 REQUIRES_PYTHON = ">=3.6.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["requests", "cryptography", "jsonschema", "pydantic"]
+REQUIRED = ["requests", "cryptography", "pydantic", "wrapt"]
 
 # What packages are optional?
 EXTRAS = {

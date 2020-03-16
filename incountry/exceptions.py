@@ -1,11 +1,3 @@
-class SecretKeyAccessorException(Exception):
-    pass
-
-
-class InCryptoException(Exception):
-    pass
-
-
 class StorageError(Exception):
     pass
 
@@ -15,4 +7,8 @@ class StorageClientError(StorageError):
 
 
 class StorageServerError(StorageError):
+    pass
+
+
+class InCryptoException(StorageError):
     pass
