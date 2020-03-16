@@ -1,16 +1,18 @@
 from pydantic import ValidationError
 
 from .exceptions import InCryptoException
+from .validation import validate_model
 from .validation.utils import get_formatter_validation_error
+from .models import SecretKeyAccessor as SecretKeyAccessorModel
 
 
 class SecretKeyAccessor:
     DEFAULT_VERSION = 0
 
+    @validate_model(SecretKeyAccessorModel)
     def __init__(self, accessor_function):
-        if not callable(accessor_function):
-            raise InCryptoException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
+        # self.init()
 
     def validate_secrets_data(self, secrets_data):
         from .models import SecretsData

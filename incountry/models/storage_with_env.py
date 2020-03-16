@@ -3,8 +3,6 @@ from typing import Any
 
 from pydantic import AnyHttpUrl, BaseModel, constr, StrictBool, validator
 
-from ..secret_key_accessor import SecretKeyAccessor
-
 
 class StorageWithEnv(BaseModel):
     encrypt: StrictBool = True
@@ -36,6 +34,8 @@ class StorageWithEnv(BaseModel):
 
     @validator("secret_key_accessor", always=True)
     def validate_secret_key_accessor(cls, value, values):
+        from ..secret_key_accessor import SecretKeyAccessor
+
         if "encrypt" not in values or values["encrypt"] is False:
             return value
         if not isinstance(value, SecretKeyAccessor):
