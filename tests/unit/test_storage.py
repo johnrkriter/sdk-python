@@ -548,8 +548,8 @@ def test_custom_endpoint(client, record, country):
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
                 "version": "test",
                 "isCurrent": True,
             }
@@ -587,8 +587,8 @@ def test_custom_encryption_write(client, record, custom_encryption):
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
                 "version": "test",
                 "isCurrent": True,
             }
@@ -622,8 +622,8 @@ def test_custom_encryption_read(client, record, custom_encryption):
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
                 "version": "test",
                 "isCurrent": True,
             }
@@ -671,8 +671,8 @@ def test_primary_custom_encryption_with_default_encryption(client, custom_encryp
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
                 "version": "test",
             }
         ],
@@ -850,14 +850,106 @@ def test_error_migrate_without_encryption(client):
 
 
 @pytest.mark.error_path
+def test_migrate_with_enc_disabled(client):
+    client(encrypt=False).migrate.when.called_with("").should.have.raised(
+        StorageClientError, "This method is only allowed with encryption enabled"
+    )
+
+
+@pytest.mark.error_path
 def test_custom_enc_with_enc_disabled(client):
     client(encrypt=False).set_custom_encryption.when.called_with("").should.have.raised(
         StorageClientError, "This method is only allowed with encryption enabled"
     )
 
 
+@pytest.mark.parametrize(
+    "custom_encryption_configs, expected_error",
+    [
+        (
+            [
+                {
+                    "encrypt": lambda input, key, key_version: True,
+                    "decrypt": lambda input, key, key_version: input,
+                    "version": "1",
+                    "isCurrent": True,
+                }
+            ],
+            "should return str",
+        ),
+        (
+            [
+                {
+                    "encrypt": lambda input, key, key_version: input,
+                    "decrypt": lambda input, key, key_version: True,
+                    "version": "1",
+                    "isCurrent": True,
+                }
+            ],
+            "should return str",
+        ),
+        (
+            [
+                {
+                    "encrypt": lambda input, key, key_version: input,
+                    "decrypt": lambda input, key, key_version: input + "1",
+                    "version": "1",
+                    "isCurrent": True,
+                }
+            ],
+            "decrypted data doesn't match the original input",
+        ),
+    ],
+)
 @pytest.mark.error_path
-def test_migrate_with_enc_disabled(client):
-    client(encrypt=False).migrate.when.called_with("").should.have.raised(
-        StorageClientError, "This method is only allowed with encryption enabled"
+def test_invalid_custom_enc(client, custom_encryption_configs, expected_error):
+    client().set_custom_encryption.when.called_with(custom_encryption_configs).should.have.raised(
+        StorageClientError, expected_error
     )
+
+
+@pytest.mark.error_path
+def test_custom_enc_with_invalid_keys(client):
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+
+    def enc(input, key, key_version):
+        if key == "password".encode("utf8"):
+            raise Exception("Unsupported key")
+        return input
+
+    custom_encryption_configs = [
+        {"encrypt": enc, "decrypt": lambda input, key, key_version: input, "version": "1", "isCurrent": True}
+    ]
+    client(secret_accessor=secret_accessor).set_custom_encryption.when.called_with(
+        custom_encryption_configs
+    ).should.have.raised(StorageClientError, "none of the available secrets are valid for custom encryption")
+
+
+@pytest.mark.error_path
+def test_custom_enc_with_errorful_enc(client):
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+
+    def enc(input, key, key_version):
+        raise Exception("Bad enc")
+
+    custom_encryption_configs = [
+        {"encrypt": enc, "decrypt": lambda input, key, key_version: input, "version": "1", "isCurrent": True}
+    ]
+    client(secret_accessor=secret_accessor).set_custom_encryption.when.called_with(
+        custom_encryption_configs
+    ).should.have.raised(StorageClientError, "none of the available secrets are valid for custom encryption")
+
+
+@pytest.mark.error_path
+def test_custom_enc_with_errorful_dec(client):
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+
+    def dec(input, key, key_version):
+        raise Exception("Bad dec")
+
+    custom_encryption_configs = [
+        {"encrypt": lambda input, key, key_version: input, "decrypt": dec, "version": "1", "isCurrent": True}
+    ]
+    client(secret_accessor=secret_accessor).set_custom_encryption.when.called_with(
+        custom_encryption_configs
+    ).should.have.raised(StorageClientError, "none of the available secrets are valid for custom encryption")

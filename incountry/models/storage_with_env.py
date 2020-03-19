@@ -48,7 +48,6 @@ class StorageWithEnv(BaseModel):
 
     @validator("endpoint", always=True, pre=True)
     def validate_endpoint(cls, value):
-        print(value)
         if value is not None and not isinstance(value, str):
             raise ValueError("should be a valid URL")
         return value

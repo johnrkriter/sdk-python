@@ -109,7 +109,17 @@ def test_invalid_country(country):
 
 
 @pytest.mark.parametrize(
-    "configs", [[{"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True}]],
+    "configs",
+    [
+        [
+            {
+                "encrypt": lambda input, key, key_version: "text",
+                "decrypt": lambda input, key, key_version: "text",
+                "version": "1",
+                "isCurrent": True,
+            }
+        ]
+    ],
 )
 @pytest.mark.happy_path
 def test_valid_custom_enc_configs(configs):
@@ -131,15 +141,34 @@ def test_valid_custom_enc_configs(configs):
         ),
         (
             [
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True},
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "2", "isCurrent": True},
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                    "isCurrent": True,
+                },
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "2",
+                    "isCurrent": True,
+                },
             ],
             "There must be at most one current version of custom encryption",
         ),
         (
             [
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True},
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1"},
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                    "isCurrent": True,
+                },
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                },
             ],
             "Versions must be unique",
         ),

@@ -162,13 +162,13 @@ def test_custom_enc_dec(plaintext):
     key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
     enc_version = "test"
 
-    def enc(text, key, key_ver):
+    def enc(input, key, key_version):
         cipher = Fernet(key)
-        return cipher.encrypt(text.encode("utf8")).decode("utf8")
+        return cipher.encrypt(input.encode("utf8")).decode("utf8")
 
-    def dec(ciphertext, key, key_ver):
+    def dec(input, key, key_version):
         cipher = Fernet(key)
-        return cipher.decrypt(ciphertext.encode("utf8")).decode("utf8")
+        return cipher.decrypt(input.encode("utf8")).decode("utf8")
 
     secret_key_accessor = SecretKeyAccessor(
         lambda: {"currentVersion": 1, "secrets": [{"secret": key, "version": 1, "isKey": True}]}
@@ -267,8 +267,8 @@ def test_wrong_ciphertext(ciphertext):
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: True,
-                "decrypt": lambda text, key, key_ver: Fernet(key).decrypt(text.encode("utf8")).decode("utf8"),
+                "encrypt": lambda input, key, key_version: True,
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
                 "version": "test",
                 "isCurrent": True,
             }
@@ -304,8 +304,8 @@ def test_custom_enc_without_secret_key_accessor():
     [
         [
             {
-                "encrypt": lambda text, key, key_ver: Fernet(key).encrypt(text.encode("utf8")).decode("utf8"),
-                "decrypt": lambda text, key, key_ver: True,
+                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+                "decrypt": lambda input, key, key_version: True,
                 "version": "test",
                 "isCurrent": True,
             }
