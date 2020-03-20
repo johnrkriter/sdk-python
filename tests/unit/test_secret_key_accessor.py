@@ -22,9 +22,8 @@ INVALID_SECRETS_DATA = [
     {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": "yes"}]},
     {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": 1}]},
     {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
-    {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}, {"secret": "password", "version": 1}]},
+    {"currentVersion": 1, "secrets": [{"secret": "password", "version": -1}, {"secret": "password", "version": 1}]},
     {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
-    {"currentVersion": 0, "secrets": [{"secret": "password", "version": 0}]},
 ]
 
 INVALID_SECRETS_DATA_WITH_SHORT_KEY = [
@@ -46,6 +45,16 @@ def test_get_secret_old(password):
 @pytest.mark.parametrize(
     "keys_data, proper_version, proper_key, proper_is_key",
     [
+        ({"currentVersion": 0, "secrets": [{"secret": "password0", "version": 0}]}, 0, "password0", False),
+        (
+            {
+                "currentVersion": 1,
+                "secrets": [{"secret": "password1", "version": 1}, {"secret": "password2", "version": 2}],
+            },
+            1,
+            "password1",
+            False,
+        ),
         (
             {
                 "currentVersion": 2,

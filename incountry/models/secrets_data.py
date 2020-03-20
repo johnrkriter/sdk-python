@@ -3,12 +3,12 @@ from pydantic import BaseModel, conlist, conint, StrictBool, StrictStr, validato
 
 class Secret(BaseModel):
     secret: StrictStr
-    version: conint(strict=True, gt=0)
+    version: conint(strict=True, ge=0)
     isKey: StrictBool = False
 
 
 class SecretsData(BaseModel):
-    currentVersion: conint(strict=True, gt=0)
+    currentVersion: conint(strict=True, ge=0)
     secrets: conlist(Secret, min_items=1)
 
     @validator("secrets", each_item=True)

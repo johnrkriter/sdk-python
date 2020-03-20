@@ -409,9 +409,11 @@ def test_valid_secrets_data(keys_data):
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": "yes"}]},
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": 1}]},
         {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
-        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}, {"secret": "password", "version": 1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": -1}, {"secret": "password", "version": 1}]},
         {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
-        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 0}]},
+        {"currentVersion": -1, "secrets": [{"secret": "password", "version": -1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": -1}]},
+        {"currentVersion": -1, "secrets": [{"secret": "password", "version": 1}]},
     ],
 )
 @pytest.mark.error_path
@@ -427,20 +429,6 @@ def test_invalid_secrets_data_current_version_not_found(keys_data):
     SecretsData.when.called_with(**keys_data).should.have.raised(
         ValidationError, "non of the secret versions match currentVersion"
     )
-
-
-@pytest.mark.parametrize(
-    "keys_data",
-    [
-        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
-        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}, {"secret": "password", "version": 1}]},
-        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
-        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 0}]},
-    ],
-)
-@pytest.mark.error_path
-def test_invalid_secrets_data_non_positive_versions(keys_data):
-    SecretsData.when.called_with(**keys_data).should.throw(ValidationError)
 
 
 @pytest.mark.parametrize(

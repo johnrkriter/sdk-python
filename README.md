@@ -42,7 +42,7 @@ Note: even though SDK uses PBKDF2 to generate a cryptographically strong encrypt
 {
   "secrets": [{
        "secret": <str>,
-       "version": <int>,   # Should be a positive integer
+       "version": <int>,   # Should be an integer >= 0
 	   "isKey": <bool>  # Should be True only for user-defined encryption keys
     }
   }, ....],
