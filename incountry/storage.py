@@ -3,7 +3,7 @@ from typing import List, Dict, Union, Any
 
 from .incountry_crypto import InCrypto
 from .crypto_utils import decrypt_record, encrypt_record, get_salted_hash
-from .exceptions import StorageServerError, InCryptoException
+from .exceptions import InCryptoException
 from .validation import validate_model, validate_encryption_enabled
 from .http_client import HttpClient
 from .models import Country, CustomEncryptionOptions, FindFilter, Record, RecordListForBatch, StorageWithEnv
@@ -87,22 +87,6 @@ class Storage(object):
         data_to_send = {"records": encrypted_records}
         self.http_client.batch_write(country=country, data=data_to_send)
         return {"records": records}
-
-    @validate_model(Country)
-    def update_one(self, country: str, filters: dict, **record_kwargs) -> Dict[str, Dict]:
-        existing_records_response = self.find(country=country, limit=1, offset=0, **filters)
-
-        if existing_records_response["meta"]["total"] >= 2:
-            raise StorageServerError("Multiple records found. Can not update")
-
-        if existing_records_response["meta"]["total"] == 0:
-            raise StorageServerError("Record not found")
-
-        updated_record = {**existing_records_response["records"][0], **record_kwargs}
-
-        self.write(country=country, **updated_record)
-
-        return {"record": updated_record}
 
     @validate_model(Country)
     @validate_model(Record)

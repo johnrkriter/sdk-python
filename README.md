@@ -23,6 +23,7 @@ storage = Storage(
     secret_key_accessor=accessor,  # Instance of SecretKeyAccessor class. Used to fetch encryption secret
 )
 ```
+
 `api_key` and `environment_id` can be fetched from your dashboard on `Incountry` site.
 
 `endpoint` defines API URL and is used to override default one.
