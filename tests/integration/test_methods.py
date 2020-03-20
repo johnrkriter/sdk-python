@@ -136,25 +136,6 @@ def test_batch_write_records(storage: Storage, encrypt: bool, key: List[str], cl
     written["records"].should.equal(RecordListForBatch(records=records).records)
 
 
-# @pytest.mark.parametrize(
-#     "update_by", ["key", "profile_key"], ids=["update by key", "update by profile key"],
-# )
-# @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
-# def test_update_one(storage: Storage, encrypt: bool, update_by: str, expected_records: List[Dict[str, Any]],) -> None:
-#     record = expected_records[0]
-
-#     updated_sample = storage.update_one(filters={update_by: record[update_by]}, country=COUNTRY, range_key=333)
-
-#     for key in record:
-#         if key != "range_key":
-#             updated_sample["record"][key].should.be.equal(record[key])
-#     updated_sample["record"]["range_key"].should.be.equal(333)
-
-#     find_updated_record = storage.find(country=COUNTRY, key=record["key"])
-#     len(find_updated_record["records"]).should.be.equal(1)
-#     find_updated_record["records"][0]["range_key"].should.be.equal(333)
-
-
 @pytest.mark.parametrize("key", ["key", "key2", "key3", "profile_key", "range_key"])
 @pytest.mark.parametrize("encrypt", [True, False], ids=["encrypted", "not encrypted"])
 def test_find_by_one_key(storage: Storage, encrypt: bool, expected_records: List[Dict[str, Any]], key: str,) -> None:

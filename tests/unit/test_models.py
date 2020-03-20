@@ -35,6 +35,7 @@ TEST_RECORDS = [
 ]
 
 INVALID_RECORDS = [
+    {"key": ""},
     {"key": 1},
     {"key": "key", "body": 1},
     {"key": "key", "version": -1},

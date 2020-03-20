@@ -1,8 +1,8 @@
-from pydantic import BaseModel, conint, StrictStr, StrictInt
+from pydantic import BaseModel, conint, constr, StrictStr, StrictInt
 
 
 class Record(BaseModel):
-    key: StrictStr
+    key: constr(strict=True, min_length=1)
     body: StrictStr = None
     key2: StrictStr = None
     key3: StrictStr = None

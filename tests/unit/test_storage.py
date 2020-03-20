@@ -757,24 +757,6 @@ def test_find_error(client, query):
     client().find.when.called_with(country=COUNTRY, **query).should.have.raised(StorageClientError)
 
 
-@httpretty.activate
-@pytest.mark.parametrize("records", [[TEST_RECORDS[0], TEST_RECORDS[1]], []])
-@pytest.mark.parametrize("encrypt", [True, False])
-@pytest.mark.error_path
-def test_update_error(client, records, encrypt):
-    enc_data = [client(encrypt).encrypt_record(dict(x)) for x in records]
-
-    httpretty.register_uri(
-        httpretty.POST,
-        POPAPI_URL + "/v2/storage/records/" + COUNTRY + "/find",
-        body=json.dumps(get_default_find_response(len(enc_data), enc_data)),
-    )
-
-    client(encrypt).update_one.when.called_with(
-        country=COUNTRY, filters={"key": "key1"}, **{"key2": "key2"}
-    ).should.have.raised(StorageServerError)
-
-
 @pytest.mark.parametrize(
     "kwargs",
     [
