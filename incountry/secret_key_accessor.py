@@ -1,34 +1,54 @@
 from pydantic import ValidationError
 
-from .exceptions import InCryptoException
-from .validation.utils import get_formatter_validation_error
+from .exceptions import StorageClientError
+from .validation import validate_model
+from .validation.utils import get_formatted_validation_error
+from .models import SecretsData, SecretKeyAccessor as SecretKeyAccessorModel
 
 
 class SecretKeyAccessor:
     DEFAULT_VERSION = 0
 
+    @validate_model(SecretKeyAccessorModel)
     def __init__(self, accessor_function):
-        if not callable(accessor_function):
-            raise InCryptoException("Argument accessor_function must be a function")
         self._accessor_function = accessor_function
 
-    def get_secret(self, version=None, ignore_length_validation=False):
-        if version is not None and not isinstance(version, int):
-            raise InCryptoException("Invalid secret version requested. Version should be of type `int`")
+    def get_secrets_data(self):
+        try:
+            secrets_data = self._accessor_function()
+        except Exception as e:
+            raise StorageClientError("Failed to retrieve secret keys data") from e
 
-        secrets_data = self._accessor_function()
+        if not isinstance(secrets_data, (str, dict)):
+            raise StorageClientError(
+                f"SecretKeyAccessor validation error: \n  "
+                f"accessor_function - should return either str or secrets_data dict"
+            )
+
+        return secrets_data
+
+    def get_secrets_raw(self):
+        secrets_data = self.get_secrets_data()
 
         if isinstance(secrets_data, str):
             return (secrets_data, SecretKeyAccessor.DEFAULT_VERSION, False)
 
         try:
-            from .models import SecretsData
-
             SecretsData.validate(secrets_data)
         except ValidationError as e:
-            raise InCryptoException(
-                f"SecretKeyAccessor validation error: {get_formatter_validation_error(e)}"
+            raise StorageClientError(
+                f"SecretKeyAccessor validation error: {get_formatted_validation_error(e)}"
             ) from None
+
+        return secrets_data
+
+    def get_secret(self, version=None, ignore_length_validation=False):
+        if version is not None and not isinstance(version, int):
+            raise StorageClientError("Invalid secret version requested. Version should be of type `int`")
+
+        secrets_data = self.get_secrets_raw()
+        if isinstance(secrets_data, tuple):
+            return secrets_data
 
         from .incountry_crypto import InCrypto
 
@@ -39,7 +59,7 @@ class SecretKeyAccessor:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
                 if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise InCryptoException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
+                    raise StorageClientError("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
                 return (secret, version_to_search, is_key)
 
-        raise InCryptoException("Secret not found for version {}".format(version_to_search))
+        raise StorageClientError("Secret not found for version {}".format(version_to_search))

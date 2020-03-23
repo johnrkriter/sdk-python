@@ -4,7 +4,7 @@ from typing import List, Dict, Union, Any
 from .incountry_crypto import InCrypto
 from .crypto_utils import decrypt_record, encrypt_record, get_salted_hash
 from .exceptions import InCryptoException
-from .validation import validate_model, validate_encryption_enabled
+from .validation import validate_model, validate_encryption_enabled, validate_custom_encryption_methods
 from .http_client import HttpClient
 from .models import Country, CustomEncryptionOptions, FindFilter, Record, RecordListForBatch, StorageWithEnv
 
@@ -47,7 +47,8 @@ class Storage(object):
         self.env_id = environment_id
         self.encrypt = encrypt
         self.custom_encryption_configs = None
-        self.crypto = InCrypto(secret_key_accessor) if self.encrypt else InCrypto()
+        self.secret_key_accessor = secret_key_accessor
+        self.crypto = InCrypto(self.secret_key_accessor) if self.encrypt else InCrypto()
 
         self.http_client = HttpClient(env_id=self.env_id, api_key=api_key, endpoint=endpoint, debug=self.debug,)
 
@@ -55,6 +56,7 @@ class Storage(object):
 
     @validate_encryption_enabled
     @validate_model(CustomEncryptionOptions)
+    @validate_custom_encryption_methods
     def set_custom_encryption(self, configs: List[Dict[str, Any]]) -> None:
         version_to_use = next((c["version"] for c in configs if c.get("isCurrent", False) is True), None)
         self.crypto.set_custom_encryption(configs, version_to_use)

@@ -13,6 +13,7 @@ from incountry.models import (
     Record,
     RecordFromServer,
     RecordListForBatch,
+    SecretsData,
     StorageWithEnv,
 )
 from incountry import SecretKeyAccessor
@@ -109,7 +110,17 @@ def test_invalid_country(country):
 
 
 @pytest.mark.parametrize(
-    "configs", [[{"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True}]],
+    "configs",
+    [
+        [
+            {
+                "encrypt": lambda input, key, key_version: "text",
+                "decrypt": lambda input, key, key_version: "text",
+                "version": "1",
+                "isCurrent": True,
+            }
+        ]
+    ],
 )
 @pytest.mark.happy_path
 def test_valid_custom_enc_configs(configs):
@@ -131,15 +142,34 @@ def test_valid_custom_enc_configs(configs):
         ),
         (
             [
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True},
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "2", "isCurrent": True},
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                    "isCurrent": True,
+                },
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "2",
+                    "isCurrent": True,
+                },
             ],
             "There must be at most one current version of custom encryption",
         ),
         (
             [
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1", "isCurrent": True},
-                {"encrypt": lambda text: "text", "decrypt": lambda text: "text", "version": "1"},
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                    "isCurrent": True,
+                },
+                {
+                    "encrypt": lambda input, key, key_version: "text",
+                    "decrypt": lambda input, key, key_version: "text",
+                    "version": "1",
+                },
             ],
             "Versions must be unique",
         ),
@@ -332,6 +362,74 @@ def test_invalid_records_for_batch(record):
 @pytest.mark.error_path
 def test_invalid_empty_records_for_batch():
     RecordListForBatch.when.called_with(records=[]).should.throw(ValidationError)
+
+
+@pytest.mark.parametrize(
+    "keys_data",
+    [
+        {"currentVersion": 1, "secrets": [{"secret": "password1", "version": 1}]},
+        {
+            "currentVersion": 1,
+            "secrets": [
+                {"secret": "password1", "version": 1, "isKey": False},
+                {"secret": "password2", "version": 2, "isKey": True},
+            ],
+        },
+        {
+            "currentVersion": 2,
+            "secrets": [{"secret": "password1", "version": 1}, {"secret": "password2", "version": 2}],
+        },
+        {"currentVersion": 1, "secrets": [{"secret": "password1", "version": 1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password1", "version": 1}]},
+    ],
+)
+@pytest.mark.error_path
+def test_valid_secrets_data(keys_data):
+    item = SecretsData(**keys_data)
+
+    assert item.currentVersion == keys_data["currentVersion"]
+    for i, secret_data in enumerate(keys_data["secrets"]):
+        for k in ["secret", "version"]:
+            if k in secret_data:
+                assert secret_data[k] == item.secrets[i][k]
+        if "isKey" in secret_data:
+            assert secret_data["isKey"] == item.secrets[i]["isKey"]
+        else:
+            assert item.secrets[i]["isKey"] is False
+
+
+@pytest.mark.parametrize(
+    "keys_data",
+    [
+        {"secrets": [{"secret": "password", "version": 1}]},
+        {"currentVersion": 1},
+        {"currentVersion": "1", "secrets": [{"secret": "password", "version": 1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": "1"}]},
+        {"currentVersion": 1, "secrets": [{"secret": 1, "version": 1}]},
+        {"currentVersion": 1, "secrets": []},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": "yes"}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 1, "isKey": 1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": 0}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": -1}, {"secret": "password", "version": 1}]},
+        {"currentVersion": 0, "secrets": [{"secret": "password", "version": 1}]},
+        {"currentVersion": -1, "secrets": [{"secret": "password", "version": -1}]},
+        {"currentVersion": 1, "secrets": [{"secret": "password", "version": -1}]},
+        {"currentVersion": -1, "secrets": [{"secret": "password", "version": 1}]},
+    ],
+)
+@pytest.mark.error_path
+def test_invalid_secrets_data(keys_data):
+    SecretsData.when.called_with(**keys_data).should.have.raised(ValidationError)
+
+
+@pytest.mark.parametrize(
+    "keys_data", [{"currentVersion": 2, "secrets": [{"secret": "password", "version": 1}]}],
+)
+@pytest.mark.error_path
+def test_invalid_secrets_data_current_version_not_found(keys_data):
+    SecretsData.when.called_with(**keys_data).should.have.raised(
+        ValidationError, "non of the secret versions match currentVersion"
+    )
 
 
 @pytest.mark.parametrize(

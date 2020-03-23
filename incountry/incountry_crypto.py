@@ -67,7 +67,7 @@ class InCrypto:
 
         custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
-            encrypted = custom_encryption["encrypt"](raw, key, key_version)
+            encrypted = custom_encryption["encrypt"](input=raw, key=key, key_version=key_version)
             if not isinstance(encrypted, str):
                 raise InCryptoException(
                     "Custom encryption 'encrypt' method should return string. Got" + str(type(encrypted))
@@ -125,7 +125,9 @@ class InCrypto:
 
         raw_enc = InCrypto.base64_to_str(enc)
 
-        decrypted = self.custom_encryption_configs[enc_version]["decrypt"](raw_enc, key, key_version)
+        decrypted = self.custom_encryption_configs[enc_version]["decrypt"](
+            input=raw_enc, key=key, key_version=key_version
+        )
         if not isinstance(decrypted, str):
             raise InCryptoException(
                 "Custom encryption 'decrypt' method should return string. Got" + str(type(decrypted))
