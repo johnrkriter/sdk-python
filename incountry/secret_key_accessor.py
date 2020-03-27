@@ -27,7 +27,7 @@ class SecretKeyAccessor:
 
         return secrets_data
 
-    def get_secrets_raw(self):
+    def get_secrets_raw(self, custom_encryption_enabled=False):
         secrets_data = self.get_secrets_data()
 
         if isinstance(secrets_data, str):
@@ -42,7 +42,7 @@ class SecretKeyAccessor:
 
         return secrets_data
 
-    def get_secret(self, version=None, ignore_length_validation=False):
+    def get_secret(self, version=None, is_for_custom_encryption=False):
         if version is not None and not isinstance(version, int):
             raise StorageClientError("Invalid secret version requested. Version should be of type `int`")
 
@@ -50,16 +50,14 @@ class SecretKeyAccessor:
         if isinstance(secrets_data, tuple):
             return secrets_data
 
-        from .incountry_crypto import InCrypto
-
         version_to_search = version if version is not None else secrets_data.get("currentVersion")
 
         for secret_data in secrets_data.get("secrets"):
             if secret_data.get("version") == version_to_search:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
-                if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise StorageClientError("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
+                if is_for_custom_encryption and not secret_data.get("isForCustomEncryption", False):
+                    raise StorageClientError("Requested secret key for custom encryption. Got a regular key instead.")
                 return (secret, version_to_search, is_key)
 
         raise StorageClientError("Secret not found for version {}".format(version_to_search))

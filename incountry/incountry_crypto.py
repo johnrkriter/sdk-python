@@ -23,10 +23,18 @@ class InCrypto:
 
     SUPPORTED_VERSIONS = ["pt", "1", "2"]
 
-    def __init__(self, secret_key_accessor=None):
+    def __init__(self, secret_key_accessor=None, custom_encryption=None):
         self.secret_key_accessor = secret_key_accessor
         self.custom_encryption_configs = None
         self.custom_encryption_version = None
+
+        if secret_key_accessor is not None:
+            self.validate_secret_key_accessor(with_custom_encryption=bool(custom_encryption))
+
+        if custom_encryption is not None:
+            self.init_custom_encryption(custom_encryption)
+
+    def _init_custom_encryption(custom_encryption)
 
     def _get_decryptor(self, enc_version):
         if enc_version == self.PT_ENC_VERSION:

@@ -18,6 +18,7 @@ class Storage(object):
         endpoint: str = None,
         encrypt: bool = True,
         secret_key_accessor=None,
+        custom_encryption=None,
         debug: bool = False,
     ):
         """
@@ -47,8 +48,7 @@ class Storage(object):
         self.env_id = environment_id
         self.encrypt = encrypt
         self.custom_encryption_configs = None
-        self.secret_key_accessor = secret_key_accessor
-        self.crypto = InCrypto(self.secret_key_accessor) if self.encrypt else InCrypto()
+        self.crypto = InCrypto(secret_key_accessor, custom_encryption) if self.encrypt else InCrypto()
 
         self.http_client = HttpClient(env_id=self.env_id, api_key=api_key, endpoint=endpoint, debug=self.debug,)
 
