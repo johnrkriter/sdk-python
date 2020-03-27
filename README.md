@@ -423,27 +423,16 @@ Error Handling
 
 InCountry Python SDK methods raise the following Exceptions
 
-###
-StorageClientException
 
-Used for various input validation errors. Can be thrown by all public methods.
+**StorageClientException** - used for various input validation errors. Can be thrown by all public methods.
 
-###
-StorageServerException
+**StorageServerException** - thrown if SDK failed to communicate with InCountry servers or if server response validation failed.
 
-Thrown if SDK failed to communicate with InCountry servers or if server response validation failed.
+**InCryptoException** - thrown during encryption/decryption procedures (both default and custom). This may be a sign of malformed/corrupt data or a wrong encryption key provided to the SDK.
 
-###
-InCryptoException
+**StorageException** - general exception. Inherited by all other exceptions
 
-Thrown during encryption/decryption procedures (both default and custom). This may be a sign of malformed/corrupt data or a wrong encryption key provided to the SDK.
-
-###
-StorageException
-
-General exception. Inherited by all other exceptions
-
-We suggest gracefully handling all the possible exceptions.
+We suggest gracefully handling all the possible exceptions:
 
 ```python
 try:
