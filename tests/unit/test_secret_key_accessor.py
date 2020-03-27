@@ -2,7 +2,7 @@ import pytest
 import sure  # noqa: F401
 
 
-from incountry import SecretKeyAccessor, StorageClientError
+from incountry import SecretKeyAccessor, StorageClientException
 
 
 INVALID_SECRETS_DATA = [
@@ -112,20 +112,20 @@ def test_get_secret_ignoring_length_validation(keys_data, proper_version, proper
 
 @pytest.mark.error_path
 def test_non_callable_accessor_function():
-    SecretKeyAccessor.when.called_with("password").should.have.raised(StorageClientError)
+    SecretKeyAccessor.when.called_with("password").should.have.raised(StorageClientException)
 
 
 @pytest.mark.error_path
 def test_incorrect_version_requested():
     secret_accessor = SecretKeyAccessor(lambda: "some password")
-    secret_accessor.get_secret.when.called_with("non int").should.have.raised(StorageClientError)
+    secret_accessor.get_secret.when.called_with("non int").should.have.raised(StorageClientException)
 
 
 @pytest.mark.parametrize("keys_data", [{"currentVersion": 1, "secrets": [{"secret": "password", "version": 1}]}])
 @pytest.mark.error_path
 def test_non_existing_version_requested(keys_data):
     secret_accessor = SecretKeyAccessor(lambda: keys_data)
-    secret_accessor.get_secret.when.called_with(version=0).should.have.raised(StorageClientError)
+    secret_accessor.get_secret.when.called_with(version=0).should.have.raised(StorageClientException)
 
 
 @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ def test_non_existing_version_requested(keys_data):
 )
 @pytest.mark.error_path
 def test_invalid_keys_object(keys_data):
-    SecretKeyAccessor.when.called_with(lambda: keys_data).should.have.raised(StorageClientError)
+    SecretKeyAccessor.when.called_with(lambda: keys_data).should.have.raised(StorageClientException)
 
 
 @pytest.mark.parametrize(
@@ -152,7 +152,7 @@ def test_invalid_keys_object_during_get_secret(keys_data):
         return keys_data
 
     secret_accessor = SecretKeyAccessor(accessor_function)
-    secret_accessor.get_secret.when.called_with().should.have.raised(StorageClientError)
+    secret_accessor.get_secret.when.called_with().should.have.raised(StorageClientException)
 
 
 @pytest.mark.parametrize(
@@ -171,7 +171,7 @@ def test_invalid_keys_object_during_get_secrets_raw(keys_data):
         return keys_data
 
     secret_accessor = SecretKeyAccessor(accessor_function)
-    secret_accessor.get_secrets_raw.when.called_with().should.have.raised(StorageClientError)
+    secret_accessor.get_secrets_raw.when.called_with().should.have.raised(StorageClientException)
 
 
 @pytest.mark.error_path
@@ -180,7 +180,7 @@ def test_errorful_accessor_function():
         raise Exception("HTTP 500")
 
     SecretKeyAccessor.when.called_with(accessor_function).should.have.raised(
-        StorageClientError, "failed to retrieve secret keys data"
+        StorageClientException, "failed to retrieve secret keys data"
     )
 
 
@@ -198,5 +198,5 @@ def test_errorful_accessor_function_after_successful_validation():
 
     secret_accessor = SecretKeyAccessor(accessor_function)
     secret_accessor.get_secrets_raw.when.called_with().should.have.raised(
-        StorageClientError, "Failed to retrieve secret keys data"
+        StorageClientException, "Failed to retrieve secret keys data"
     )

@@ -2,7 +2,7 @@ import pytest
 import sure  # noqa: F401
 from pydantic import BaseModel, StrictInt, StrictStr, validator
 
-from incountry import StorageClientError
+from incountry import StorageClientException
 from incountry.validation import validate_model, validate_encryption_enabled
 
 POPAPI_URL = "https://popapi.com:8082"
@@ -59,7 +59,7 @@ def test_validate_model_properly_throws_validation_error():
     def test_function(arg1=None, arg2=None):
         raise Exception("this code should not be reached during the test")
 
-    test_function.when.called_with(arg1=123, arg2="123").should.throw(StorageClientError)
+    test_function.when.called_with(arg1=123, arg2="123").should.throw(StorageClientException)
 
 
 @pytest.mark.happy_path
@@ -73,7 +73,7 @@ def test_validate_encryption_enabled_works_properly():
             return "test"
 
     instance1 = TestClass(encrypt=True)
-    instance1.test_method.when.called_with().should_not.throw(StorageClientError)
+    instance1.test_method.when.called_with().should_not.throw(StorageClientException)
 
     instance2 = TestClass(encrypt=False)
-    instance2.test_method.when.called_with().should.throw(StorageClientError)
+    instance2.test_method.when.called_with().should.throw(StorageClientException)

@@ -1,6 +1,6 @@
 from pydantic import ValidationError
 
-from .exceptions import StorageClientError
+from .exceptions import StorageClientException
 from .validation import validate_model
 from .validation.utils import get_formatted_validation_error
 from .models import SecretsData, SecretKeyAccessor as SecretKeyAccessorModel
@@ -17,10 +17,10 @@ class SecretKeyAccessor:
         try:
             secrets_data = self._accessor_function()
         except Exception as e:
-            raise StorageClientError("Failed to retrieve secret keys data") from e
+            raise StorageClientException("Failed to retrieve secret keys data") from e
 
         if not isinstance(secrets_data, (str, dict)):
-            raise StorageClientError(
+            raise StorageClientException(
                 f"SecretKeyAccessor validation error: \n  "
                 f"accessor_function - should return either str or secrets_data dict"
             )
@@ -36,7 +36,7 @@ class SecretKeyAccessor:
         try:
             SecretsData.validate(secrets_data)
         except ValidationError as e:
-            raise StorageClientError(
+            raise StorageClientException(
                 f"SecretKeyAccessor validation error: {get_formatted_validation_error(e)}"
             ) from None
 
@@ -44,7 +44,7 @@ class SecretKeyAccessor:
 
     def get_secret(self, version=None, ignore_length_validation=False):
         if version is not None and not isinstance(version, int):
-            raise StorageClientError("Invalid secret version requested. Version should be of type `int`")
+            raise StorageClientException("Invalid secret version requested. Version should be of type `int`")
 
         secrets_data = self.get_secrets_raw()
         if isinstance(secrets_data, tuple):
@@ -59,7 +59,7 @@ class SecretKeyAccessor:
                 is_key = secret_data.get("isKey", False)
                 secret = secret_data.get("secret")
                 if not ignore_length_validation and is_key and len(secret) != InCrypto.KEY_LENGTH:
-                    raise StorageClientError("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
+                    raise StorageClientException("Key should be {}-characters long".format(InCrypto.KEY_LENGTH))
                 return (secret, version_to_search, is_key)
 
-        raise StorageClientError("Secret not found for version {}".format(version_to_search))
+        raise StorageClientException("Secret not found for version {}".format(version_to_search))

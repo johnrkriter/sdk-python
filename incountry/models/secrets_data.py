@@ -2,9 +2,9 @@ from pydantic import BaseModel, conlist, conint, StrictBool, StrictStr, validato
 
 
 class Secret(BaseModel):
+    isKey: StrictBool = False
     secret: StrictStr
     version: conint(strict=True, ge=0)
-    isKey: StrictBool = False
 
 
 class SecretsData(BaseModel):

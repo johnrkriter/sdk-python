@@ -3,7 +3,7 @@ import wrapt
 
 
 from .utils import function_args_to_kwargs, get_formatted_validation_error
-from ..exceptions import StorageClientError, InCryptoException
+from ..exceptions import StorageClientException, InCryptoException
 from ..models import CustomEncryptionOptionsWithKey
 
 
@@ -41,10 +41,10 @@ def validate_custom_encryption_methods(function, storage_instance, args, kwargs)
     except ValidationError as e:
         errors_report = get_formatted_validation_error(e)
         error_text = f"Validation failed during {function.__qualname__}():{errors_report}"
-        raise StorageClientError(error_text) from None
+        raise StorageClientException(error_text) from None
 
     if not valid_key_found:
-        raise StorageClientError(
+        raise StorageClientException(
             f"Validation failed during {function.__qualname__}(): "
             f"none of the available secrets are valid for custom encryption"
         )

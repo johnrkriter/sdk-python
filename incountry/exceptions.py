@@ -1,14 +1,14 @@
-class StorageError(Exception):
+class StorageException(Exception):
     pass
 
 
-class StorageClientError(StorageError):
+class StorageClientException(StorageException):
     pass
 
 
-class StorageServerError(StorageError):
+class StorageServerException(StorageException):
     pass
 
 
-class InCryptoException(StorageError):
+class InCryptoException(StorageException):
     pass
