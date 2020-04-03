@@ -7,6 +7,8 @@ from cryptography.hazmat.backends import default_backend
 
 from .exceptions import InCryptoException
 from .secret_key_accessor import SecretKeyAccessor
+from .validation import validate_model
+from .models import InCrypto as InCryptoModel
 
 
 class InCrypto:
@@ -23,18 +25,26 @@ class InCrypto:
 
     SUPPORTED_VERSIONS = ["pt", "1", "2"]
 
-    def __init__(self, secret_key_accessor=None, custom_encryption=None):
+    @validate_model(InCryptoModel)
+    def __init__(self, secret_key_accessor=None, custom_encryption_configs=None):
         self.secret_key_accessor = secret_key_accessor
         self.custom_encryption_configs = None
         self.custom_encryption_version = None
 
-        if secret_key_accessor is not None:
-            self.validate_secret_key_accessor(with_custom_encryption=bool(custom_encryption))
+        if custom_encryption_configs is not None:
+            self._init_custom_encryption(custom_encryption_configs)
 
-        if custom_encryption is not None:
-            self.init_custom_encryption(custom_encryption)
+    def _init_custom_encryption(self, configs):
+        version_to_use = next((c["version"] for c in configs if c.get("isCurrent", False) is True), None)
 
-    def _init_custom_encryption(custom_encryption)
+        configs_by_packed_version = {}
+        for c in configs:
+            version = InCrypto.pack_custom_encryption_version(c["version"])
+            configs_by_packed_version[version] = c
+
+        self.custom_encryption_configs = configs_by_packed_version
+        if version_to_use is not None:
+            self.custom_encryption_version = InCrypto.pack_custom_encryption_version(version_to_use)
 
     def _get_decryptor(self, enc_version):
         if enc_version == self.PT_ENC_VERSION:
@@ -51,19 +61,6 @@ class InCrypto:
 
         raise InCryptoException("Unknown decryptor version requested")
 
-    def set_custom_encryption(self, custom_encryption_configs, custom_encryption_version=None):
-        if self.secret_key_accessor is None:
-            raise InCryptoException("Custom encryption not supported without secret_key_accessor provided")
-
-        configs_by_packed_version = {}
-        for c in custom_encryption_configs:
-            version = InCrypto.pack_custom_encryption_version(c["version"])
-            configs_by_packed_version[version] = c
-
-        self.custom_encryption_configs = configs_by_packed_version
-        if custom_encryption_version is not None:
-            self.custom_encryption_version = InCrypto.pack_custom_encryption_version(custom_encryption_version)
-
     def encrypt(self, raw):
         if self.custom_encryption_version is None:
             return self.encrypt_default(raw)
@@ -71,7 +68,7 @@ class InCrypto:
         return self.encrypt_custom(raw)
 
     def encrypt_custom(self, raw):
-        [key, key_version] = self.get_key(get_raw_secret=True)
+        [key, key_version] = self.get_key(is_for_custom_encryption=True)
 
         custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
@@ -129,7 +126,7 @@ class InCrypto:
         return base64.b64decode(enc).decode("utf8")
 
     def decrypt_custom(self, enc, key_version, enc_version):
-        [key, *rest] = self.get_key(key_version=key_version, get_raw_secret=True)
+        [key, *rest] = self.get_key(key_version=key_version, is_for_custom_encryption=True)
 
         raw_enc = InCrypto.base64_to_str(enc)
 
@@ -169,12 +166,12 @@ class InCrypto:
         decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend()).decryptor()
         return (decryptor.update(enc) + decryptor.finalize()).decode("utf8")
 
-    def get_key(self, salt=b"", key_version=None, get_raw_secret=False):
+    def get_key(self, salt=b"", key_version=None, is_for_custom_encryption=False):
         [secret, version, is_key] = self.secret_key_accessor.get_secret(
-            version=key_version, ignore_length_validation=get_raw_secret
+            version=key_version, is_for_custom_encryption=is_for_custom_encryption
         )
 
-        if is_key or get_raw_secret:
+        if is_key or is_for_custom_encryption:
             return (secret.encode("utf8"), version)
 
         return (

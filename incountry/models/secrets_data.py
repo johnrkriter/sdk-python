@@ -19,7 +19,9 @@ class Secret(BaseModel):
 
         if values.get("isKey", False) and not values.get("isForCustomEncryption", False):
             if len(value) != InCrypto.KEY_LENGTH:
-                raise ValueError(f"should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string")
+                raise ValueError(
+                    f"wrong default key length. Should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string"
+                )
 
         return value
 
@@ -39,7 +41,7 @@ class SecretsData(BaseModel):
             if secret["version"] == values.get("currentVersion", False):
                 current_version_found = True
         if not current_version_found:
-            raise ValueError("non of the secret versions match currentVersion")
+            raise ValueError("none of the secret versions match currentVersion")
         return value
 
 

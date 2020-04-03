@@ -3,7 +3,11 @@ from pydantic import ValidationError
 from .exceptions import StorageClientError
 from .validation import validate_model
 from .validation.utils import get_formatted_validation_error
-from .models import SecretsData, SecretKeyAccessor as SecretKeyAccessorModel
+from .models import (
+    SecretsDataForDefaultEncryption,
+    SecretsDataForCustomEncryption,
+    SecretKeyAccessor as SecretKeyAccessorModel,
+)
 
 
 class SecretKeyAccessor:
@@ -12,6 +16,10 @@ class SecretKeyAccessor:
     @validate_model(SecretKeyAccessorModel)
     def __init__(self, accessor_function):
         self._accessor_function = accessor_function
+        self._custom_encryption_keys_enabled = False
+
+    def enable_custom_encryption_keys(self):
+        self._custom_encryption_keys_enabled = True
 
     def get_secrets_data(self):
         try:
@@ -21,26 +29,32 @@ class SecretKeyAccessor:
 
         if not isinstance(secrets_data, (str, dict)):
             raise StorageClientError(
-                f"SecretKeyAccessor validation error: \n  "
+                f"SecretKeyAccessor validation error: "
                 f"accessor_function - should return either str or secrets_data dict"
             )
 
         return secrets_data
 
-    def get_secrets_raw(self, custom_encryption_enabled=False):
+    def get_secrets_raw(self):
         secrets_data = self.get_secrets_data()
 
         if isinstance(secrets_data, str):
             return (secrets_data, SecretKeyAccessor.DEFAULT_VERSION, False)
 
         try:
-            SecretsData.validate(secrets_data)
+            if self._custom_encryption_keys_enabled:
+                SecretsDataForCustomEncryption.validate(secrets_data)
+            else:
+                SecretsDataForDefaultEncryption.validate(secrets_data)
         except ValidationError as e:
             raise StorageClientError(
-                f"SecretKeyAccessor validation error: {get_formatted_validation_error(e)}"
+                f"SecretKeyAccessor validation error: {get_formatted_validation_error(e)}", e
             ) from None
 
         return secrets_data
+
+    def validate(self):
+        self.get_secrets_raw()
 
     def get_secret(self, version=None, is_for_custom_encryption=False):
         if version is not None and not isinstance(version, int):

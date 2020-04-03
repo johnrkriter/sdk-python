@@ -29,6 +29,8 @@ def validate_model(model):
                 kwargs[key] = validated_data_dict[key]
         try:
             return function(**kwargs)
+        except StorageClientError as e:
+            raise StorageClientError(f"Validation failed during {function.__qualname__}()") from e
         except Exception as e:
             raise StorageError(f"Unexpected error during {function.__qualname__}()") from e
 

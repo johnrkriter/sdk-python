@@ -5,7 +5,7 @@ import base64
 
 from cryptography.fernet import Fernet
 
-from incountry import InCrypto, InCryptoException, SecretKeyAccessor
+from incountry import InCrypto, InCryptoException, SecretKeyAccessor, StorageClientError
 
 PLAINTEXTS = [
     "",
@@ -171,39 +171,14 @@ def test_custom_enc_dec(plaintext):
         return cipher.decrypt(input.encode("utf8")).decode("utf8")
 
     secret_key_accessor = SecretKeyAccessor(
-        lambda: {"currentVersion": 1, "secrets": [{"secret": key, "version": 1, "isKey": True}]}
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [{"secret": key, "version": 1, "isKey": True, "isForCustomEncryption": True}],
+        }
     )
     custom_enc = [{"encrypt": enc, "decrypt": dec, "version": enc_version, "isCurrent": True}]
 
-    cipher = InCrypto(secret_key_accessor)
-    cipher.set_custom_encryption(custom_enc, enc_version)
-
-    [enc, *rest] = cipher.encrypt(plaintext)
-    dec = cipher.decrypt(enc)
-
-    assert plaintext == dec
-
-
-@pytest.mark.parametrize("plaintext", PLAINTEXTS)
-@pytest.mark.happy_path
-def test_not_current_custom_enc_dec(plaintext):
-    enc_version = "test"
-
-    def enc(text, key, key_ver):
-        cipher = Fernet(key)
-        return cipher.encrypt(text.encode("utf8")).decode("utf8")
-
-    def dec(ciphertext, key, key_ver):
-        cipher = Fernet(key)
-        return cipher.decrypt(ciphertext.encode("utf8")).decode("utf8")
-
-    secret_key_accessor = SecretKeyAccessor(
-        lambda: {"currentVersion": 1, "secrets": [{"secret": "testsecret", "version": 1}]}
-    )
-    custom_enc = [{"encrypt": enc, "decrypt": dec, "version": enc_version, "isCurrent": False}]
-
-    cipher = InCrypto(secret_key_accessor)
-    cipher.set_custom_encryption(custom_enc)
+    cipher = InCrypto(secret_key_accessor, custom_enc)
 
     [enc, *rest] = cipher.encrypt(plaintext)
     dec = cipher.decrypt(enc)
@@ -262,40 +237,11 @@ def test_wrong_ciphertext(ciphertext):
     cipher.decrypt.when.called_with(ciphertext).should.have.raised(InCryptoException)
 
 
-@pytest.mark.parametrize(
-    "custom_encryption",
-    [
-        [
-            {
-                "encrypt": lambda input, key, key_version: True,
-                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
-                "version": "test",
-                "isCurrent": True,
-            }
-        ],
-    ],
-)
-@pytest.mark.error_path
-def test_custom_enc_with_enc_not_returning_str(custom_encryption):
-    secret_key_accessor = SecretKeyAccessor(
-        lambda: {"currentVersion": 1, "secrets": [{"secret": "testsecret", "version": 1, "isKey": True}]}
-    )
-
-    cipher = InCrypto(secret_key_accessor)
-    cipher.set_custom_encryption(custom_encryption, custom_encryption[0]["version"])
-
-    cipher.encrypt.when.called_with("test").should.have.raised(
-        InCryptoException, "Custom encryption 'encrypt' method should return string"
-    )
-
-
 @pytest.mark.error_path
 def test_custom_enc_without_secret_key_accessor():
-
-    cipher = InCrypto()
-
-    cipher.set_custom_encryption.when.called_with("").should.have.raised(
-        InCryptoException, "Custom encryption not supported without secret_key_accessor provided"
+    InCrypto.when.called_with(None, []).should.have.raised(
+        StorageClientError,
+        f"provide a valid secret_key_accessor param of class {SecretKeyAccessor.__name__} to use custom encryption",
     )
 
 
@@ -310,22 +256,32 @@ def test_custom_enc_without_secret_key_accessor():
                 "isCurrent": True,
             }
         ],
+        [
+            {
+                "encrypt": lambda input, key, key_version: True,
+                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
+                "version": "test",
+                "isCurrent": True,
+            }
+        ],
     ],
 )
 @pytest.mark.error_path
-def test_custom_enc_with_dec_not_returning_str(custom_encryption):
+def test_custom_enc_with_methods_not_returning_str(custom_encryption):
     secret_key_accessor = SecretKeyAccessor(
         lambda: {
             "currentVersion": 1,
-            "secrets": [{"secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)), "version": 1, "isKey": True}],
+            "secrets": [
+                {
+                    "secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)),
+                    "version": 1,
+                    "isKey": True,
+                    "isForCustomEncryption": True,
+                }
+            ],
         }
     )
 
-    cipher = InCrypto(secret_key_accessor)
-    cipher.set_custom_encryption(custom_encryption, custom_encryption[0]["version"])
-
-    [enc, *rest] = cipher.encrypt("test")
-
-    cipher.decrypt.when.called_with(enc).should.have.raised(
-        InCryptoException, "Custom encryption 'decrypt' method should return string"
+    InCrypto.when.called_with(secret_key_accessor, custom_encryption).should.have.raised(
+        StorageClientError, "should return str. Got bool"
     )
