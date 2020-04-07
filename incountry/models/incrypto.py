@@ -47,7 +47,6 @@ class InCrypto(BaseModel):
                     "incorrect secrets data" + get_formatted_validation_error(e.original_exception, prefix="  ")
                 )
             else:
-                # print("incorrect secrets data" + str(e))
                 raise ValueError(e)
 
         return value
@@ -82,8 +81,8 @@ class InCrypto(BaseModel):
 
     @validator("custom_encryption_configs", each_item=True)
     def validate_methods(cls, value, values):
-        # if "secret_key_accessor" not in values:
-        #     return value
+        if "secret_key_accessor" not in values:
+            return value
 
         from ..validation.validate_custom_encryption_config import validate_custom_encryption_config
 

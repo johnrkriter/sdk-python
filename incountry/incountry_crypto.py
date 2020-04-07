@@ -62,28 +62,31 @@ class InCrypto:
         raise InCryptoException("Unknown decryptor version requested")
 
     def encrypt(self, raw):
-        if self.custom_encryption_version is None:
-            return self.encrypt_default(raw)
+        try:
+            if self.custom_encryption_version is None:
+                return self.encrypt_default(raw)
 
-        return self.encrypt_custom(raw)
+            return self.encrypt_custom(raw)
+        except Exception as e:
+            raise InCryptoException("Unexpected error during encryption") from e
 
     def encrypt_custom(self, raw):
-        [key, key_version] = self.get_key(is_for_custom_encryption=True)
-
-        custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
         try:
+            [key, key_version] = self.get_key(is_for_custom_encryption=True)
+            custom_encryption = self.custom_encryption_configs[self.custom_encryption_version]
             encrypted = custom_encryption["encrypt"](input=raw, key=key, key_version=key_version)
-            if not isinstance(encrypted, str):
-                raise InCryptoException(
-                    "Custom encryption 'encrypt' method should return string. Got" + str(type(encrypted))
-                )
-
-            return (
-                self.custom_encryption_version + ":" + InCrypto.str_to_base64(encrypted),
-                key_version,
-            )
         except Exception as e:
-            raise InCryptoException(e) from e
+            raise InCryptoException("Unexpected error during custom encryption 'encrypt'") from e
+
+        if not isinstance(encrypted, str):
+            raise InCryptoException(
+                "Custom encryption 'encrypt' method should return string. Got " + str(type(encrypted))
+            )
+
+        return (
+            self.custom_encryption_version + ":" + InCrypto.str_to_base64(encrypted),
+            key_version,
+        )
 
     def encrypt_default(self, raw):
         if self.secret_key_accessor is None:
@@ -97,15 +100,12 @@ class InCrypto:
         [key, key_version, *rest] = self.get_key(salt)
 
         encryptor = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend()).encryptor()
-        try:
-            encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
-            auth_tag = encryptor.tag
-            return (
-                InCrypto.ENC_VERSION + ":" + self.pack_base64(salt, iv, encrypted, auth_tag),
-                key_version,
-            )
-        except Exception as e:
-            raise InCryptoException(e) from e
+        encrypted = encryptor.update(raw.encode("utf8")) + encryptor.finalize()
+        auth_tag = encryptor.tag
+        return (
+            InCrypto.ENC_VERSION + ":" + self.pack_base64(salt, iv, encrypted, auth_tag),
+            key_version,
+        )
 
     def decrypt(self, enc, key_version=None):
         parts = enc.split(":")
@@ -120,22 +120,24 @@ class InCrypto:
         try:
             return decryptor(packed_enc, key_version=key_version, enc_version=enc_version)
         except Exception as e:
-            raise InCryptoException(e) from e
+            raise InCryptoException("Unexpected error during decryption") from e
 
     def decrypt_pt(self, enc, key_version=None, enc_version=None):
         return base64.b64decode(enc).decode("utf8")
 
     def decrypt_custom(self, enc, key_version, enc_version):
-        [key, *rest] = self.get_key(key_version=key_version, is_for_custom_encryption=True)
+        try:
+            [key, *rest] = self.get_key(key_version=key_version, is_for_custom_encryption=True)
+            raw_enc = InCrypto.base64_to_str(enc)
+            decrypted = self.custom_encryption_configs[enc_version]["decrypt"](
+                input=raw_enc, key=key, key_version=key_version
+            )
+        except Exception as e:
+            raise InCryptoException("Unexpected error during custom encryption 'decrypt'") from e
 
-        raw_enc = InCrypto.base64_to_str(enc)
-
-        decrypted = self.custom_encryption_configs[enc_version]["decrypt"](
-            input=raw_enc, key=key, key_version=key_version
-        )
         if not isinstance(decrypted, str):
             raise InCryptoException(
-                "Custom encryption 'decrypt' method should return string. Got" + str(type(decrypted))
+                "Custom encryption 'decrypt' method should return string. Got " + str(type(decrypted))
             )
 
         return decrypted

@@ -20,7 +20,8 @@ class Secret(BaseModel):
         if values.get("isKey", False) and not values.get("isForCustomEncryption", False):
             if len(value) != InCrypto.KEY_LENGTH:
                 raise ValueError(
-                    f"wrong default key length. Should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string"
+                    f"wrong default key length. Should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string. "
+                    f"If it's a custom key, please provide 'isForCustomEncryption' param"
                 )
 
         return value

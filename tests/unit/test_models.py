@@ -466,7 +466,7 @@ def test_invalid_secret_key_accessor_param_for_incrypto(secret_key_accessor):
         ],
     ],
 )
-@pytest.mark.happy_path
+@pytest.mark.error_path
 def test_invalid_custom_encryption_configs_param_for_incrypto(custom_encryption_configs):
     InCrypto.when.called_with(
         **{
@@ -476,7 +476,7 @@ def test_invalid_custom_encryption_configs_param_for_incrypto(custom_encryption_
     ).should.throw(ValidationError)
 
 
-@pytest.mark.happy_path
+@pytest.mark.error_path
 def test_invalid_params_for_incrypto():
     InCrypto.when.called_with(
         **{
@@ -485,11 +485,45 @@ def test_invalid_params_for_incrypto():
                 {
                     "encrypt": lambda input, key, key_version: input,
                     "decrypt": lambda input, key, key_version: input,
-                    "version": "same version",
+                    "version": "some version",
                 }
             ],
         }
     ).should.throw(ValidationError)
+
+
+@pytest.mark.error_path
+def test_no_suitable_enc_key_for_custom_encryption_for_incrypto():
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+
+    def enc(input, key, key_version):
+        raise Exception("Unsupported key")
+
+    InCrypto.when.called_with(
+        **{
+            "secret_key_accessor": secret_accessor,
+            "custom_encryption_configs": [
+                {"encrypt": enc, "decrypt": lambda input, key, key_version: input, "version": "some version"}
+            ],
+        }
+    ).should.throw(ValidationError, "should return str. Threw exception instead")
+
+
+@pytest.mark.error_path
+def test_no_suitable_dec_key_for_custom_encryption_for_incrypto():
+    secret_accessor = SecretKeyAccessor(lambda: "password")
+
+    def dec(input, key, key_version):
+        raise Exception("Unsupported key")
+
+    InCrypto.when.called_with(
+        **{
+            "secret_key_accessor": secret_accessor,
+            "custom_encryption_configs": [
+                {"decrypt": dec, "encrypt": lambda input, key, key_version: input, "version": "some version"}
+            ],
+        }
+    ).should.throw(ValidationError, "should return str. Threw exception instead")
 
 
 @pytest.mark.parametrize("record", TEST_RECORDS)

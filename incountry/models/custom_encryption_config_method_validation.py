@@ -1,6 +1,9 @@
+import traceback
 from typing import Callable
 
 from pydantic import BaseModel, validator, StrictBool, StrictInt, StrictStr
+
+from ..exceptions import StorageClientError
 
 CUSTOM_ENCRYPTION_METHODS_ARGS = ["input", "key", "key_version"]
 
@@ -25,8 +28,13 @@ class CustomEncryptionConfigMethodValidation(BaseModel):
 
         try:
             enc = value(input=plaintext, key=values["key"], key_version=values["keyVersion"])
-        except Exception as e:
-            raise ValueError(f"should return str. Threw exception instead") from e
+        except Exception:
+            raise ValueError(
+                "should return str. Threw exception instead"
+                + "\n\n==Validation Error Traceback Start==\n\n"
+                + traceback.format_exc()
+                + "\n==Validation Error Traceback End=="
+            )
 
         if not isinstance(enc, str):
             raise ValueError(f"should return str. Got {type(enc).__name__}")
@@ -41,8 +49,13 @@ class CustomEncryptionConfigMethodValidation(BaseModel):
         try:
             enc = values["encrypt"](input=plaintext, key=values["key"], key_version=values["keyVersion"])
             dec = value(input=enc, key=values["key"], key_version=values["keyVersion"])
-        except Exception as e:
-            raise ValueError(f"should return str. Threw exception instead") from e
+        except Exception:
+            raise ValueError(
+                "should return str. Threw exception instead"
+                + "\n\n==Validation Error Traceback Start==\n\n"
+                + traceback.format_exc()
+                + "\n==Validation Error Traceback End=="
+            )
 
         if not isinstance(dec, str):
             raise ValueError(f"should return str. Got {type(dec).__name__}")

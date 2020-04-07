@@ -43,6 +43,13 @@ PREPARED_DATA_BY_VERSION = {
     ],
 }
 
+VALID_CUSTOM_ENCRYPTION_CONFIG = {
+    "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
+    "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
+    "version": "test",
+    "isCurrent": True,
+}
+
 
 @pytest.mark.happy_path
 def test_pack_unpack():
@@ -157,18 +164,12 @@ def test_dec_non_pt_without_secret_key_accessor(ciphertext, plaintext, password)
 
 
 @pytest.mark.parametrize("plaintext", PLAINTEXTS)
+@pytest.mark.parametrize(
+    "custom_encryption", [[VALID_CUSTOM_ENCRYPTION_CONFIG]],
+)
 @pytest.mark.happy_path
-def test_custom_enc_dec(plaintext):
+def test_custom_enc_dec(plaintext, custom_encryption):
     key = InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH))
-    enc_version = "test"
-
-    def enc(input, key, key_version):
-        cipher = Fernet(key)
-        return cipher.encrypt(input.encode("utf8")).decode("utf8")
-
-    def dec(input, key, key_version):
-        cipher = Fernet(key)
-        return cipher.decrypt(input.encode("utf8")).decode("utf8")
 
     secret_key_accessor = SecretKeyAccessor(
         lambda: {
@@ -176,9 +177,8 @@ def test_custom_enc_dec(plaintext):
             "secrets": [{"secret": key, "version": 1, "isKey": True, "isForCustomEncryption": True}],
         }
     )
-    custom_enc = [{"encrypt": enc, "decrypt": dec, "version": enc_version, "isCurrent": True}]
 
-    cipher = InCrypto(secret_key_accessor, custom_enc)
+    cipher = InCrypto(secret_key_accessor, custom_encryption)
 
     [enc, *rest] = cipher.encrypt(plaintext)
     dec = cipher.decrypt(enc)
@@ -248,22 +248,8 @@ def test_custom_enc_without_secret_key_accessor():
 @pytest.mark.parametrize(
     "custom_encryption",
     [
-        [
-            {
-                "encrypt": lambda input, key, key_version: Fernet(key).encrypt(input.encode("utf8")).decode("utf8"),
-                "decrypt": lambda input, key, key_version: True,
-                "version": "test",
-                "isCurrent": True,
-            }
-        ],
-        [
-            {
-                "encrypt": lambda input, key, key_version: True,
-                "decrypt": lambda input, key, key_version: Fernet(key).decrypt(input.encode("utf8")).decode("utf8"),
-                "version": "test",
-                "isCurrent": True,
-            }
-        ],
+        [{**VALID_CUSTOM_ENCRYPTION_CONFIG, "decrypt": lambda input, key, key_version: True}],
+        [{**VALID_CUSTOM_ENCRYPTION_CONFIG, "encrypt": lambda input, key, key_version: True}],
     ],
 )
 @pytest.mark.error_path
@@ -285,3 +271,145 @@ def test_custom_enc_with_methods_not_returning_str(custom_encryption):
     InCrypto.when.called_with(secret_key_accessor, custom_encryption).should.have.raised(
         StorageClientError, "should return str. Got bool"
     )
+
+
+@pytest.mark.parametrize(
+    "custom_encryption", [[dict(VALID_CUSTOM_ENCRYPTION_CONFIG)]],
+)
+@pytest.mark.error_path
+def test_custom_enc_returning_nonstr_on_enc_after_successful_validation(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [
+                {
+                    "secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)),
+                    "version": 1,
+                    "isKey": True,
+                    "isForCustomEncryption": True,
+                }
+            ],
+        }
+    )
+
+    global i
+    i = 0
+
+    def enc(input, key, key_version):
+        global i
+        if i > 1:
+            return True
+        i += 1
+        return Fernet(key).encrypt(input.encode("utf8")).decode("utf8")
+
+    custom_encryption[0]["encrypt"] = enc
+    cipher = InCrypto(secret_key_accessor, custom_encryption)
+    cipher.encrypt.when.called_with("plaintext").should.have.raised(
+        InCryptoException, "Unexpected error during encryption"
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_encryption", [[dict(VALID_CUSTOM_ENCRYPTION_CONFIG)]],
+)
+@pytest.mark.error_path
+def test_custom_enc_returning_nonstr_on_dec_after_successful_validation(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [
+                {
+                    "secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)),
+                    "version": 1,
+                    "isKey": True,
+                    "isForCustomEncryption": True,
+                }
+            ],
+        }
+    )
+
+    global i
+    i = 0
+
+    def dec(input, key, key_version):
+        global i
+        if i > 0:
+            return True
+        i += 1
+        return Fernet(key).decrypt(input.encode("utf8")).decode("utf8")
+
+    custom_encryption[0]["decrypt"] = dec
+    cipher = InCrypto(secret_key_accessor, custom_encryption)
+    [enc, *rest] = cipher.encrypt("plaintext")
+    cipher.decrypt.when.called_with(enc).should.have.raised(InCryptoException, "Unexpected error during decryption")
+
+
+@pytest.mark.parametrize(
+    "custom_encryption", [[dict(VALID_CUSTOM_ENCRYPTION_CONFIG)]],
+)
+@pytest.mark.error_path
+def test_custom_enc_throwing_on_enc_after_successful_validation(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [
+                {
+                    "secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)),
+                    "version": 1,
+                    "isKey": True,
+                    "isForCustomEncryption": True,
+                }
+            ],
+        }
+    )
+
+    global i
+    i = 0
+
+    def enc(input, key, key_version):
+        global i
+        if i > 1:
+            raise Exception("error")
+        i += 1
+        return Fernet(key).encrypt(input.encode("utf8")).decode("utf8")
+
+    custom_encryption[0]["encrypt"] = enc
+    cipher = InCrypto(secret_key_accessor, custom_encryption)
+    cipher.encrypt.when.called_with("plaintext").should.have.raised(
+        InCryptoException, "Unexpected error during encryption"
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_encryption", [[dict(VALID_CUSTOM_ENCRYPTION_CONFIG)]],
+)
+@pytest.mark.error_path
+def test_custom_enc_throwing_on_dec_after_successful_validation(custom_encryption):
+    secret_key_accessor = SecretKeyAccessor(
+        lambda: {
+            "currentVersion": 1,
+            "secrets": [
+                {
+                    "secret": InCrypto.b_to_base64(os.urandom(InCrypto.KEY_LENGTH)),
+                    "version": 1,
+                    "isKey": True,
+                    "isForCustomEncryption": True,
+                }
+            ],
+        }
+    )
+
+    global i
+    i = 0
+
+    def dec(input, key, key_version):
+        global i
+        if i > 0:
+            raise Exception("error")
+        i += 1
+        return Fernet(key).decrypt(input.encode("utf8")).decode("utf8")
+
+    custom_encryption[0]["decrypt"] = dec
+    cipher = InCrypto(secret_key_accessor, custom_encryption)
+    [enc, *rest] = cipher.encrypt("plaintext")
+    cipher.decrypt.when.called_with(enc).should.have.raised(InCryptoException, "Unexpected error during decryption")

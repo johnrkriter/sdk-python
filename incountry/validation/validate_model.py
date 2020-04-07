@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 
 from .utils import function_args_to_kwargs, get_formatted_validation_error
-from ..exceptions import StorageError, StorageClientError
+from ..exceptions import StorageError, StorageClientError, StorageServerError
 
 
 def get_validated_data(function, model, **kwargs):
@@ -31,6 +31,8 @@ def validate_model(model):
             return function(**kwargs)
         except StorageClientError as e:
             raise StorageClientError(f"Validation failed during {function.__qualname__}()") from e
+        except StorageServerError as e:
+            raise e
         except Exception as e:
             raise StorageError(f"Unexpected error during {function.__qualname__}()") from e
 
