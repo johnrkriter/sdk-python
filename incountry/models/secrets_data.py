@@ -17,12 +17,15 @@ class Secret(BaseModel):
     def validate_secret_length(cls, value, values):
         from ..incountry_crypto import InCrypto
 
-        if values.get("isKey", False) and not values.get("isForCustomEncryption", False):
-            if len(value) != InCrypto.KEY_LENGTH:
-                raise ValueError(
-                    f"wrong default key length. Should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string. "
-                    f"If it's a custom key, please provide 'isForCustomEncryption' param"
-                )
+        if (
+            values.get("isKey", False)
+            and not values.get("isForCustomEncryption", False)
+            and len(value) != InCrypto.KEY_LENGTH
+        ):
+            raise ValueError(
+                f"wrong default key length. Should be {InCrypto.KEY_LENGTH}-characters 'utf8' encoded string. "
+                f"If it's a custom key, please provide 'isForCustomEncryption' param"
+            )
 
         return value
 
