@@ -3,8 +3,6 @@ from typing import Callable
 
 from pydantic import BaseModel, validator, StrictBool, StrictInt, StrictStr
 
-from ..exceptions import StorageClientError
-
 CUSTOM_ENCRYPTION_METHODS_ARGS = ["input", "key", "key_version"]
 
 
