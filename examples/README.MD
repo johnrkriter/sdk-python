@@ -7,6 +7,17 @@ Supported Country Codes
 -----
 |  Region |  Country Code |  Country |  City |
 |:-:|:-:|:-:|:-:|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+| Americas | AR  |  Argentina |  Buenos Aires, Cordoba |
+| Americas | BR |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
+|  |   |   |   |
